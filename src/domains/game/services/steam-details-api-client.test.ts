@@ -34,7 +34,7 @@ async function loadSteamDetailsApiClient() {
 }
 
 describe("SteamDetailsApiClient", () => {
-  it("returns game name from Steam details payload", async () => {
+  it("returns game name and release date from Steam details payload", async () => {
     const {
       SteamDetailsApiClient,
       fetchWithTimeout,
@@ -50,6 +50,9 @@ describe("SteamDetailsApiClient", () => {
             success: true,
             data: {
               name: "Dead Space 2",
+              release_date: {
+                date: "12 May, 2011",
+              },
             },
           },
         }),
@@ -62,7 +65,10 @@ describe("SteamDetailsApiClient", () => {
 
     const client = new SteamDetailsApiClient();
 
-    await expect(client.getGameNameByAppId("47780")).resolves.toBe("Dead Space 2");
+    await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
+      name: "Dead Space 2",
+      releaseDate: "12 May, 2011",
+    });
 
     expect(createRateLimiter).toHaveBeenCalledWith(10);
     expect(rateLimiter).toHaveBeenCalledTimes(1);
@@ -91,7 +97,7 @@ describe("SteamDetailsApiClient", () => {
 
     const client = new SteamDetailsApiClient();
 
-    await expect(client.getGameNameByAppId("47780")).rejects.toMatchObject({
+    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamFetchError",
     });
   });
@@ -108,7 +114,7 @@ describe("SteamDetailsApiClient", () => {
 
     const client = new SteamDetailsApiClient();
 
-    await expect(client.getGameNameByAppId("47780")).rejects.toMatchObject({
+    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",
     });
   });
@@ -132,7 +138,7 @@ describe("SteamDetailsApiClient", () => {
 
     const client = new SteamDetailsApiClient();
 
-    await expect(client.getGameNameByAppId("47780")).rejects.toMatchObject({
+    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",
     });
   });
@@ -159,7 +165,7 @@ describe("SteamDetailsApiClient", () => {
 
     const client = new SteamDetailsApiClient();
 
-    await expect(client.getGameNameByAppId("47780")).rejects.toMatchObject({
+    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",
     });
   });

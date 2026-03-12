@@ -7,6 +7,9 @@ interface SteamAppDetailsResponse {
     success: boolean;
     data?: {
       name?: string;
+      release_date?: {
+        date?: string;
+      };
     };
   };
 }
@@ -18,7 +21,7 @@ export class SteamDetailsApiClient {
     this.rateLimiter = createRateLimiter(10);
   }
 
-  async getGameNameByAppId(appId: string): Promise<string> {
+  async getGameDetailsByAppId(appId: string): Promise<{ name: string; releaseDate: string }> {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
     const response = await this.rateLimiter(() =>
@@ -53,6 +56,11 @@ export class SteamDetailsApiClient {
       throw new SteamParseError(`Steam API returned invalid name for app ${appId}`);
     }
 
-    return gameName;
+    const releaseDate = appData.data.release_date?.date;
+    if (!releaseDate || typeof releaseDate !== "string") {
+      throw new SteamParseError(`Steam API returned invalid release date for app ${appId}`);
+    }
+
+    return { name: gameName, releaseDate };
   }
 }

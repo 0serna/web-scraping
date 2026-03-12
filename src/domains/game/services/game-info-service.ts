@@ -16,6 +16,7 @@ export class GameInfoService {
       score: gameData.score,
       name: gameData.name,
       source: "steam",
+      releaseDate: gameData.releaseDate,
     };
   }
 }

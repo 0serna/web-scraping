@@ -1,15 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
 interface LoadOptions {
-  cacheResult?: { name: string; score: number };
-  gameName?: string;
+  cacheResult?: { name: string; score: number; releaseDate: string };
+  gameDetails?: { name: string; releaseDate: string };
   scoreResult?: { score: number } | null;
 }
 
 async function loadSteamUnifiedClient(options: LoadOptions = {}) {
   vi.resetModules();
 
-  const getGameNameByAppId = vi.fn().mockResolvedValue(options.gameName ?? "Dead Space 2");
+  const getGameDetailsByAppId = vi
+    .fn()
+    .mockResolvedValue(
+      options.gameDetails ?? { name: "Dead Space 2", releaseDate: "12 May, 2011" },
+    );
   const getScoreByAppId = vi
     .fn()
     .mockResolvedValue(options.scoreResult === undefined ? { score: 91.4 } : options.scoreResult);
@@ -18,7 +22,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
   const reviewsConstructorSpy = vi.fn();
 
   class SteamDetailsApiClientMock {
-    getGameNameByAppId = getGameNameByAppId;
+    getGameDetailsByAppId = getGameDetailsByAppId;
 
     constructor(logger: unknown) {
       detailsConstructorSpy(logger);
@@ -34,7 +38,10 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
   }
 
   const getOrFetch = vi.fn(
-    async (_key: string, fetcher: () => Promise<{ name: string; score: number }>) => {
+    async (
+      _key: string,
+      fetcher: () => Promise<{ name: string; score: number; releaseDate: string }>,
+    ) => {
       if (options.cacheResult) {
         return options.cacheResult;
       }
@@ -62,7 +69,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
 
   return {
     createSteamUnifiedApiClient,
-    getGameNameByAppId,
+    getGameDetailsByAppId,
     getScoreByAppId,
     getOrFetch,
     createCache,
@@ -75,7 +82,7 @@ describe("createSteamUnifiedApiClient", () => {
   it("combines details and reviews into unified game data", async () => {
     const {
       createSteamUnifiedApiClient,
-      getGameNameByAppId,
+      getGameDetailsByAppId,
       getScoreByAppId,
       getOrFetch,
       createCache,
@@ -87,18 +94,19 @@ describe("createSteamUnifiedApiClient", () => {
     await expect(client.getGameData("47780")).resolves.toEqual({
       name: "Dead Space 2",
       score: 91.4,
+      releaseDate: "12 May, 2011",
     });
 
     expect(createCache).toHaveBeenCalledWith(1296000000, logger);
     expect(getOrFetch).toHaveBeenCalledWith("steam:47780", expect.any(Function));
-    expect(getGameNameByAppId).toHaveBeenCalledWith("47780");
+    expect(getGameDetailsByAppId).toHaveBeenCalledWith("47780");
     expect(getScoreByAppId).toHaveBeenCalledWith("47780");
   });
 
   it("uses cache result without calling API clients", async () => {
-    const { createSteamUnifiedApiClient, getGameNameByAppId, getScoreByAppId } =
+    const { createSteamUnifiedApiClient, getGameDetailsByAppId, getScoreByAppId } =
       await loadSteamUnifiedClient({
-        cacheResult: { name: "Cached Name", score: 88 },
+        cacheResult: { name: "Cached Name", score: 88, releaseDate: "1 Jan, 2020" },
       });
 
     const logger = { child: vi.fn() };
@@ -107,9 +115,10 @@ describe("createSteamUnifiedApiClient", () => {
     await expect(client.getGameData("47780")).resolves.toEqual({
       name: "Cached Name",
       score: 88,
+      releaseDate: "1 Jan, 2020",
     });
 
-    expect(getGameNameByAppId).not.toHaveBeenCalled();
+    expect(getGameDetailsByAppId).not.toHaveBeenCalled();
     expect(getScoreByAppId).not.toHaveBeenCalled();
   });
 

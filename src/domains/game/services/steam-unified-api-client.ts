@@ -8,6 +8,7 @@ const STEAM_GAME_DATA_CACHE_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 interface GameData {
   name: string;
   score: number;
+  releaseDate: string;
 }
 
 class SteamUnifiedApiClient {
@@ -25,8 +26,8 @@ class SteamUnifiedApiClient {
     const cacheKey = `steam:${appId}`;
 
     const result = await this.steamGameDataCache.getOrFetch(cacheKey, async () => {
-      const [gameName, score] = await Promise.all([
-        this.steamDetailsApiClient.getGameNameByAppId(appId),
+      const [gameDetails, score] = await Promise.all([
+        this.steamDetailsApiClient.getGameDetailsByAppId(appId),
         this.steamReviewsApiClient.getScoreByAppId(appId),
       ]);
 
@@ -39,8 +40,9 @@ class SteamUnifiedApiClient {
       }
 
       return {
-        name: gameName,
+        name: gameDetails.name,
         score: score.score,
+        releaseDate: gameDetails.releaseDate,
       };
     });
 

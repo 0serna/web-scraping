@@ -24,7 +24,11 @@ async function loadGameInfoService() {
 describe("GameInfoService", () => {
   it("maps unified client response into game info payload", async () => {
     const { GameInfoService, getGameData } = await loadGameInfoService();
-    getGameData.mockResolvedValue({ name: "Dead Space 2", score: 91.4 });
+    getGameData.mockResolvedValue({
+      name: "Dead Space 2",
+      score: 91.4,
+      releaseDate: "12 May, 2011",
+    });
 
     const logger = { child: vi.fn() };
     const service = new GameInfoService(logger as never);
@@ -33,6 +37,7 @@ describe("GameInfoService", () => {
       name: "Dead Space 2",
       score: 91.4,
       source: "steam",
+      releaseDate: "12 May, 2011",
     });
     expect(getGameData).toHaveBeenCalledWith("47780");
   });
