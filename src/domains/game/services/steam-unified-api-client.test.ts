@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
 interface LoadOptions {
-  cacheResult?: { name: string; score: number; releaseDate: string };
-  gameDetails?: { name: string; releaseDate: string };
+  cacheResult?: { name: string; score: number; releaseYear?: number };
+  gameDetails?: { name: string; releaseYear?: number };
   scoreResult?: { score: number } | null;
 }
 
@@ -11,9 +11,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
 
   const getGameDetailsByAppId = vi
     .fn()
-    .mockResolvedValue(
-      options.gameDetails ?? { name: "Dead Space 2", releaseDate: "12 May, 2011" },
-    );
+    .mockResolvedValue(options.gameDetails ?? { name: "Dead Space 2", releaseYear: 2011 });
   const getScoreByAppId = vi
     .fn()
     .mockResolvedValue(options.scoreResult === undefined ? { score: 91.4 } : options.scoreResult);
@@ -40,7 +38,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
   const getOrFetch = vi.fn(
     async (
       _key: string,
-      fetcher: () => Promise<{ name: string; score: number; releaseDate: string }>,
+      fetcher: () => Promise<{ name: string; score: number; releaseYear?: number }>,
     ) => {
       if (options.cacheResult) {
         return options.cacheResult;
@@ -94,7 +92,7 @@ describe("createSteamUnifiedApiClient", () => {
     await expect(client.getGameData("47780")).resolves.toEqual({
       name: "Dead Space 2",
       score: 91.4,
-      releaseDate: "12 May, 2011",
+      releaseYear: 2011,
     });
 
     expect(createCache).toHaveBeenCalledWith(1296000000, logger);
@@ -106,7 +104,7 @@ describe("createSteamUnifiedApiClient", () => {
   it("uses cache result without calling API clients", async () => {
     const { createSteamUnifiedApiClient, getGameDetailsByAppId, getScoreByAppId } =
       await loadSteamUnifiedClient({
-        cacheResult: { name: "Cached Name", score: 88, releaseDate: "1 Jan, 2020" },
+        cacheResult: { name: "Cached Name", score: 88, releaseYear: 2020 },
       });
 
     const logger = { child: vi.fn() };
@@ -115,7 +113,7 @@ describe("createSteamUnifiedApiClient", () => {
     await expect(client.getGameData("47780")).resolves.toEqual({
       name: "Cached Name",
       score: 88,
-      releaseDate: "1 Jan, 2020",
+      releaseYear: 2020,
     });
 
     expect(getGameDetailsByAppId).not.toHaveBeenCalled();

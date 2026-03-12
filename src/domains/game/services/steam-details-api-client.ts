@@ -21,7 +21,7 @@ export class SteamDetailsApiClient {
     this.rateLimiter = createRateLimiter(10);
   }
 
-  async getGameDetailsByAppId(appId: string): Promise<{ name: string; releaseDate: string }> {
+  async getGameDetailsByAppId(appId: string): Promise<{ name: string; releaseYear?: number }> {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
     const response = await this.rateLimiter(() =>
@@ -57,10 +57,22 @@ export class SteamDetailsApiClient {
     }
 
     const releaseDate = appData.data.release_date?.date;
+    const releaseYear = this.parseReleaseYear(releaseDate);
+
+    return { name: gameName, releaseYear };
+  }
+
+  private parseReleaseYear(releaseDate: string | undefined): number | undefined {
     if (!releaseDate || typeof releaseDate !== "string") {
-      throw new SteamParseError(`Steam API returned invalid release date for app ${appId}`);
+      return undefined;
     }
 
-    return { name: gameName, releaseDate };
+    const match = releaseDate.match(/(\d{4})/);
+    if (!match) {
+      return undefined;
+    }
+
+    const year = parseInt(match[1], 10);
+    return Number.isFinite(year) ? year : undefined;
   }
 }

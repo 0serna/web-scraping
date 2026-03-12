@@ -67,7 +67,7 @@ describe("SteamDetailsApiClient", () => {
 
     await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
       name: "Dead Space 2",
-      releaseDate: "12 May, 2011",
+      releaseYear: 2011,
     });
 
     expect(createRateLimiter).toHaveBeenCalledWith(10);
@@ -168,5 +168,102 @@ describe("SteamDetailsApiClient", () => {
     await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",
     });
+  });
+
+  it("returns undefined releaseYear when release date is 'Coming Soon'", async () => {
+    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+
+    fetchWithTimeout.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          47780: {
+            success: true,
+            data: {
+              name: "Some Game",
+              release_date: {
+                date: "Coming Soon",
+              },
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    const client = new SteamDetailsApiClient();
+
+    await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
+      name: "Some Game",
+      releaseYear: undefined,
+    });
+  });
+
+  it("returns undefined releaseYear when release_date is missing", async () => {
+    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+
+    fetchWithTimeout.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          47780: {
+            success: true,
+            data: {
+              name: "Some Game",
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    const client = new SteamDetailsApiClient();
+
+    await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
+      name: "Some Game",
+      releaseYear: undefined,
+    });
+  });
+
+  it("extracts year from various date formats", async () => {
+    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+
+    const testCases = [
+      { input: "Q1 2024", expected: 2024 },
+      { input: "2024", expected: 2024 },
+      { input: "Jan 1, 2023", expected: 2023 },
+      { input: "TBA 2025", expected: 2025 },
+    ];
+
+    for (const { input, expected } of testCases) {
+      fetchWithTimeout.mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            47780: {
+              success: true,
+              data: {
+                name: "Some Game",
+                release_date: {
+                  date: input,
+                },
+              },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      );
+
+      const client = new SteamDetailsApiClient();
+      const result = await client.getGameDetailsByAppId("47780");
+
+      expect(result.releaseYear).toBe(expected);
+    }
   });
 });

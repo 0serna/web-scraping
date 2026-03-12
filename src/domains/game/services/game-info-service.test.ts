@@ -27,7 +27,7 @@ describe("GameInfoService", () => {
     getGameData.mockResolvedValue({
       name: "Dead Space 2",
       score: 91.4,
-      releaseDate: "12 May, 2011",
+      releaseYear: 2011,
     });
 
     const logger = { child: vi.fn() };
@@ -37,7 +37,7 @@ describe("GameInfoService", () => {
       name: "Dead Space 2",
       score: 91.4,
       source: "steam",
-      releaseDate: "12 May, 2011",
+      releaseYear: 2011,
     });
     expect(getGameData).toHaveBeenCalledWith("47780");
   });

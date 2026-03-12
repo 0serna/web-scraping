@@ -8,7 +8,7 @@ const STEAM_GAME_DATA_CACHE_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 interface GameData {
   name: string;
   score: number;
-  releaseDate: string;
+  releaseYear?: number;
 }
 
 class SteamUnifiedApiClient {
@@ -42,7 +42,7 @@ class SteamUnifiedApiClient {
       return {
         name: gameDetails.name,
         score: score.score,
-        releaseDate: gameDetails.releaseDate,
+        releaseYear: gameDetails.releaseYear,
       };
     });
 
