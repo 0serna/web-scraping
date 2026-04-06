@@ -44,13 +44,13 @@ describe("ModelRankingService", () => {
       {
         model: "Model B",
         position: 1,
-        score: 64,
+        score: 56,
         price1m: 0.38,
       },
       {
         model: "Model A",
         position: 2,
-        score: 47.81,
+        score: 48.93,
         price1m: 0.38,
       },
     ]);
@@ -131,20 +131,20 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         position: 1,
-        score: 66.83,
+        score: 63.14,
+        price1m: 0.75,
+      },
+      {
+        model: "Model A",
+        position: 2,
+        score: 57.09,
         price1m: 0.25,
       },
       {
         model: "Model B",
-        position: 2,
-        score: 64,
-        price1m: 0.13,
-      },
-      {
-        model: "Model A",
         position: 3,
-        score: 62.25,
-        price1m: 0.75,
+        score: 56,
+        price1m: 0.13,
       },
     ]);
   });
@@ -201,13 +201,13 @@ describe("ModelRankingService", () => {
     expect(modelXA).toEqual({
       model: "Model X",
       position: 1,
-      score: 74,
+      score: 66.25,
       price1m: 0.13,
     });
     expect(modelXB).toEqual({
       model: "Model X",
       position: 1,
-      score: 74,
+      score: 66.25,
       price1m: 0.13,
     });
     expect(rankingA).toEqual(rankingB);
@@ -235,7 +235,7 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         position: 1,
-        score: 64.26,
+        score: 56.32,
         price1m: 0.26,
       },
     ]);
@@ -263,17 +263,17 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expect(ranking).toHaveLength(20);
+    expect(ranking).toHaveLength(15);
     expect(ranking[0]).toMatchObject({
       model: "Model 1",
       position: 1,
       score: 100,
       price1m: 0.5,
     });
-    expect(ranking[19]).toMatchObject({
-      model: "Model 20",
-      position: 20,
-      score: 78.47,
+    expect(ranking[14]).toMatchObject({
+      model: "Model 15",
+      position: 15,
+      score: 84.21,
       price1m: 0.5,
     });
   });
