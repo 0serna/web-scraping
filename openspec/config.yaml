@@ -1,0 +1,17 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Node.js 22+, TypeScript, Fastify, Vitest, Biome
+  Domain-driven architecture: src/domains/ with routes, services, types
+  Web scraping: HTML parsing with regex, Next.js flight payloads, Upstash Redis cache
+
+  For validation always use MCP DevTools (chrome-devtools_*) to navigate, snapshot,
+  analyze network requests, and test selectors on target websites.
+
+rules:
+  proposal:
+    - Identify affected domain(s) and rate limiting strategy
+  design:
+    - Use createCache(), fetchWithTimeout(), domain error classes
+  tasks:
+    - Add tests for each scenario
