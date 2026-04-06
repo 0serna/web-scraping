@@ -288,12 +288,21 @@ function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
     performanceData.push(...chunkPerformance);
   }
 
+  const seenSlugs = new Set<string>();
+  const uniqueMetadataModels: ArtificialAnalysisModel[] = [];
+  for (const model of metadataModels) {
+    if (!seenSlugs.has(model.slug)) {
+      seenSlugs.add(model.slug);
+      uniqueMetadataModels.push(model);
+    }
+  }
+
   // If we have both metadata and performance data, merge them
   let finalModels: ArtificialAnalysisModel[];
-  if (metadataModels.length > 0 && performanceData.length > 0) {
-    finalModels = mergeModelData(metadataModels, performanceData);
-  } else if (metadataModels.length > 0) {
-    finalModels = metadataModels;
+  if (uniqueMetadataModels.length > 0 && performanceData.length > 0) {
+    finalModels = mergeModelData(uniqueMetadataModels, performanceData);
+  } else if (uniqueMetadataModels.length > 0) {
+    finalModels = uniqueMetadataModels;
   } else {
     throw new AiParseError("Unable to locate models data in payload");
   }

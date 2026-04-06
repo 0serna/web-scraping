@@ -382,4 +382,118 @@ describe("ArtificialAnalysisClient", () => {
       },
     ]);
   });
+
+  it("preserves first-occurrence metadata when same slug appears in multiple chunks", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+
+    // Chunk 1: has isReasoning: true (like chunk 11 from real site)
+    const chunk1 = encodeChunk(
+      `b:${JSON.stringify({
+        models: [
+          {
+            slug: "gpt-5-4-mini-duplicate",
+            name: "GPT-5.4 mini Duplicate",
+            shortName: "GPT-5.4 mini (xhigh)",
+            isReasoning: true,
+            creator: { name: "OpenAI", color: "#1f1f1f" },
+          },
+        ],
+      })}`,
+      1,
+    );
+
+    // Chunk 2: same slug but WITHOUT isReasoning field (like chunk 28 from real site)
+    const chunk2 = encodeChunk(
+      `b:${JSON.stringify({
+        models: [
+          {
+            slug: "gpt-5-4-mini-duplicate",
+            name: "GPT-5.4 mini Duplicate",
+            shortName: "GPT-5.4 mini (xhigh)",
+            // isReasoning intentionally missing
+            coding_index: 51.48,
+            agentic_index: 55.66,
+            price_1m_blended_3_to_1: 1.6875,
+            price_1m_input_tokens: 0.75,
+            price_1m_output_tokens: 4.5,
+          },
+        ],
+      })}`,
+      2,
+    );
+
+    const html = `<html><body>${chunk1}${chunk2}</body></html>`;
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+
+    const result = await client.getModels();
+
+    // First occurrence should win - isReasoning should be preserved from chunk 1
+    expect(result).toContainEqual({
+      slug: "gpt-5-4-mini-duplicate",
+      model: "GPT-5.4 mini Duplicate",
+      reasoningModel: true,
+      coding: 51.48,
+      agentic: 55.66,
+      blendedPrice: 1.6875,
+      inputPrice: 0.75,
+      outputPrice: 4.5,
+    });
+  });
+
+  it("handles duplicate slugs with identical metadata in multiple chunks", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+
+    // Chunk 1 and Chunk 2 have same slug with identical metadata
+    const chunk1 = encodeChunk(
+      `b:${JSON.stringify({
+        models: [
+          {
+            slug: "model-identical",
+            name: "Model Identical",
+            isReasoning: true,
+            coding_index: 60,
+            agentic_index: 65,
+          },
+        ],
+      })}`,
+      1,
+    );
+
+    const chunk2 = encodeChunk(
+      `b:${JSON.stringify({
+        models: [
+          {
+            slug: "model-identical",
+            name: "Model Identical",
+            isReasoning: true,
+            coding_index: 60,
+            agentic_index: 65,
+          },
+        ],
+      })}`,
+      2,
+    );
+
+    const html = `<html><body>${chunk1}${chunk2}</body></html>`;
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+
+    const result = await client.getModels();
+
+    // Should have exactly one entry (no duplicates)
+    expect(result).toHaveLength(1);
+    expect(result).toContainEqual({
+      slug: "model-identical",
+      model: "Model Identical",
+      reasoningModel: true,
+      coding: 60,
+      agentic: 65,
+      blendedPrice: null,
+      inputPrice: null,
+      outputPrice: null,
+    });
+  });
 });
