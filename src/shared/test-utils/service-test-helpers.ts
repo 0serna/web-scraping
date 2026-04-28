@@ -16,6 +16,19 @@ export function createPassthroughCacheGetOrFetchMock<T>() {
   return vi.fn(async (_key: string, fetcher: () => Promise<T>) => fetcher());
 }
 
+export function createPassthroughCacheGetOrFetchValidatedMock<T>() {
+  return vi.fn(
+    async (
+      _key: string,
+      fetcher: () => Promise<T>,
+      validator: (value: T) => boolean,
+    ) => {
+      void validator;
+      return fetcher();
+    },
+  );
+}
+
 export function createPassthroughRateLimiterMock() {
   return vi.fn(async (fn: () => Promise<unknown>) => fn());
 }

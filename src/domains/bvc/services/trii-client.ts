@@ -3,6 +3,7 @@ import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
+import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
@@ -22,6 +23,10 @@ function parsePrice(raw: string): number | null {
   if (!Number.isFinite(numeric)) return null;
 
   return numeric;
+}
+
+function hasFinitePrice(map: TriiPriceMap): boolean {
+  return Object.values(map).some((price) => Number.isFinite(price));
 }
 
 function parseTriiStockListHtml(html: string): TriiPriceMap {
@@ -64,7 +69,7 @@ interface TriiTickerResult {
 }
 
 export class TriiClient {
-  private triiCache;
+  private readonly triiCache: Cache<TriiPriceMap>;
 
   constructor(logger: FastifyBaseLogger) {
     this.triiCache = createCache<TriiPriceMap>(TRII_CACHE_TTL_MS, logger);
@@ -74,7 +79,7 @@ export class TriiClient {
     const normalizedTicker = normalizeTicker(ticker);
     if (!normalizedTicker) return null;
 
-    const priceMap = await this.triiCache.getOrFetch(
+    const priceMap = await this.triiCache.getOrFetchValidated(
       TRII_CACHE_KEY,
       async () => {
         const response = await fetchWithTimeout(TRII_STOCK_LIST_URL, {
@@ -94,6 +99,7 @@ export class TriiClient {
         const html = await response.text();
         return parseTriiStockListHtml(html);
       },
+      hasFinitePrice,
     );
 
     const price = priceMap[normalizedTicker] ?? null;

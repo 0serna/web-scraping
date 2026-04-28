@@ -39,7 +39,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
     }
   }
 
-  const getOrFetch = vi.fn(
+  const getOrFetchValidated = vi.fn(
     async (
       _key: string,
       fetcher: () => Promise<{
@@ -47,16 +47,24 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
         score: number;
         releaseYear?: number;
       }>,
+      validator: (value: {
+        name: string;
+        score: number;
+        releaseYear?: number;
+      }) => boolean,
     ) => {
       if (options.cacheResult) {
-        return options.cacheResult;
+        if (validator(options.cacheResult)) {
+          return options.cacheResult;
+        }
+        throw new Error("Fresh value failed validation");
       }
       return fetcher();
     },
   );
 
   const createCache = vi.fn().mockReturnValue({
-    getOrFetch,
+    getOrFetchValidated,
   });
 
   vi.doMock("../../../shared/utils/cache-factory.js", () => ({
@@ -78,7 +86,7 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
     createSteamUnifiedApiClient,
     getGameDetailsByAppId,
     getScoreByAppId,
-    getOrFetch,
+    getOrFetchValidated,
     createCache,
     detailsConstructorSpy,
     reviewsConstructorSpy,
@@ -91,7 +99,7 @@ describe("createSteamUnifiedApiClient", () => {
       createSteamUnifiedApiClient,
       getGameDetailsByAppId,
       getScoreByAppId,
-      getOrFetch,
+      getOrFetchValidated,
       createCache,
     } = await loadSteamUnifiedClient();
 
@@ -105,8 +113,9 @@ describe("createSteamUnifiedApiClient", () => {
     });
 
     expect(createCache).toHaveBeenCalledWith(1296000000, logger);
-    expect(getOrFetch).toHaveBeenCalledWith(
+    expect(getOrFetchValidated).toHaveBeenCalledWith(
       "steam:47780",
+      expect.any(Function),
       expect.any(Function),
     );
     expect(getGameDetailsByAppId).toHaveBeenCalledWith("47780");
@@ -159,5 +168,22 @@ describe("createSteamUnifiedApiClient", () => {
     await expect(client.getGameData("47780")).rejects.toThrow(
       "Steam score is invalid for app 47780",
     );
+  });
+
+  it("refetches when cached game data has empty name", async () => {
+    const {
+      createSteamUnifiedApiClient,
+      getGameDetailsByAppId,
+      getScoreByAppId,
+    } = await loadSteamUnifiedClient({
+      cacheResult: { name: "", score: 90 },
+    });
+
+    const logger = { child: vi.fn() };
+    const client = createSteamUnifiedApiClient(logger as never);
+
+    await expect(client.getGameData("47780")).rejects.toThrow();
+    expect(getGameDetailsByAppId).not.toHaveBeenCalled();
+    expect(getScoreByAppId).not.toHaveBeenCalled();
   });
 });

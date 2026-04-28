@@ -58,6 +58,16 @@ The system SHALL include only models that are explicitly marked as frontier by A
 - **WHEN** a model has `frontier_model: true` but is not a reasoning model
 - **THEN** the system SHALL exclude that model from the ranking
 
+#### Scenario: Stale cached models refreshed once
+
+- **WHEN** cached Artificial Analysis model data contains no model with slug, reasoning flag, frontier flag, coding score, agentic score, and blended price
+- **THEN** the system SHALL invalidate the cached model data key and fetch fresh model data once before deciding whether ranking can proceed
+
+#### Scenario: Fresh models remain unrankable
+
+- **WHEN** refreshed Artificial Analysis model data still contains no model with slug, reasoning flag, frontier flag, coding score, agentic score, and blended price
+- **THEN** the system SHALL fail the ranking instead of returning an empty ranking
+
 ### Requirement: Preserve frontier model flag from source data
 
 The system SHALL normalize Artificial Analysis' `frontier_model` source field into the AI model data used by ranking logic.

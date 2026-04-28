@@ -3,6 +3,7 @@ import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
+import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
@@ -21,7 +22,7 @@ interface TradingViewTickerResult {
 }
 
 export class TradingViewClient {
-  private tradingViewCache;
+  private readonly tradingViewCache: Cache<number>;
 
   constructor(logger: FastifyBaseLogger) {
     this.tradingViewCache = createCache<number>(
@@ -39,7 +40,7 @@ export class TradingViewClient {
     const cacheKey = `stock:${normalizedTicker}`;
 
     try {
-      const price = await this.tradingViewCache.getOrFetch(
+      const price = await this.tradingViewCache.getOrFetchValidated(
         cacheKey,
         async () => {
           const symbol = `BVC:${normalizedTicker.toUpperCase()}`;
@@ -72,6 +73,7 @@ export class TradingViewClient {
 
           throw new BvcParseError("TradingView did not return a valid close");
         },
+        Number.isFinite,
       );
 
       return {

@@ -3,6 +3,7 @@ import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
+import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { AiFetchError, AiParseError } from "../types/errors.js";
 import {
@@ -21,6 +22,18 @@ const PERFORMANCE_DATA_PATTERN = '"coding_index"\\s*:';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function hasRankableFrontierModel(models: ArtificialAnalysisModel[]): boolean {
+  return models.some(
+    (m) =>
+      m.slug.length > 0 &&
+      m.reasoningModel &&
+      m.frontierModel &&
+      isFiniteNumber(m.coding) &&
+      isFiniteNumber(m.agentic) &&
+      isFiniteNumber(m.blendedPrice),
+  );
 }
 
 function extractBalancedJsonText(
@@ -308,7 +321,7 @@ function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
 }
 
 export class ArtificialAnalysisClient {
-  private modelsCache;
+  private readonly modelsCache: Cache<ArtificialAnalysisModel[]>;
 
   constructor(logger: FastifyBaseLogger) {
     this.modelsCache = createCache<ArtificialAnalysisModel[]>(
@@ -318,7 +331,7 @@ export class ArtificialAnalysisClient {
   }
 
   async getModels(): Promise<ArtificialAnalysisModel[]> {
-    return this.modelsCache.getOrFetch(
+    return this.modelsCache.getOrFetchValidated(
       ARTIFICIAL_ANALYSIS_CACHE_KEY,
       async () => {
         const response = await fetchWithTimeout(ARTIFICIAL_ANALYSIS_URL, {
@@ -338,6 +351,7 @@ export class ArtificialAnalysisClient {
         const html = await response.text();
         return parseModelsFromHtml(html);
       },
+      hasRankableFrontierModel,
     );
   }
 }

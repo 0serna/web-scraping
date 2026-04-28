@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { SteamDetailsApiClient } from "./steam-details-api-client.js";
 import { SteamReviewsApiClient } from "./steam-reviews-api-client.js";
@@ -11,10 +12,14 @@ interface GameData {
   releaseYear?: number;
 }
 
+function hasValidGameData(data: GameData): boolean {
+  return data.name.trim().length > 0 && Number.isFinite(data.score);
+}
+
 class SteamUnifiedApiClient {
-  private steamGameDataCache;
-  private steamDetailsApiClient: SteamDetailsApiClient;
-  private steamReviewsApiClient: SteamReviewsApiClient;
+  private readonly steamGameDataCache: Cache<GameData>;
+  private readonly steamDetailsApiClient: SteamDetailsApiClient;
+  private readonly steamReviewsApiClient: SteamReviewsApiClient;
 
   constructor(logger: FastifyBaseLogger) {
     this.steamGameDataCache = createCache<GameData>(
@@ -28,7 +33,7 @@ class SteamUnifiedApiClient {
   async getGameData(appId: string): Promise<GameData> {
     const cacheKey = `steam:${appId}`;
 
-    const result = await this.steamGameDataCache.getOrFetch(
+    return this.steamGameDataCache.getOrFetchValidated(
       cacheKey,
       async () => {
         const [gameDetails, score] = await Promise.all([
@@ -50,9 +55,8 @@ class SteamUnifiedApiClient {
           releaseYear: gameDetails.releaseYear,
         };
       },
+      hasValidGameData,
     );
-
-    return result;
   }
 }
 

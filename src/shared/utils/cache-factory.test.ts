@@ -11,14 +11,18 @@ async function loadCreateCache(cacheDisabled: boolean) {
   const upstashInstance = {
     get: vi.fn(),
     set: vi.fn(),
+    delete: vi.fn(),
     getOrFetch: vi.fn(),
+    getOrFetchValidated: vi.fn(),
   };
 
   const upstashConstructorSpy = vi.fn();
   class UpstashCacheMock {
     get = upstashInstance.get;
     set = upstashInstance.set;
+    delete = upstashInstance.delete;
     getOrFetch = upstashInstance.getOrFetch;
+    getOrFetchValidated = upstashInstance.getOrFetchValidated;
 
     constructor(ttlMs: number, logger: unknown) {
       upstashConstructorSpy(ttlMs, logger);
@@ -63,10 +67,29 @@ describe("createCache", () => {
 
     await expect(cache.get("key")).resolves.toBeNull();
     await expect(cache.set("key", 1)).resolves.toBeUndefined();
+    await expect(cache.delete("key")).resolves.toBeUndefined();
 
     const fetcher = vi.fn().mockResolvedValue(42);
     await expect(cache.getOrFetch("key", fetcher)).resolves.toBe(42);
     expect(fetcher).toHaveBeenCalledTimes(1);
+
+    const validator = vi.fn().mockReturnValue(true);
+    const validatedFetcher = vi.fn().mockResolvedValue(99);
+    await expect(
+      cache.getOrFetchValidated("key", validatedFetcher, validator),
+    ).resolves.toBe(99);
+    expect(validator).toHaveBeenCalledWith(99);
+  });
+
+  it("no-op cache throws when fresh value fails validation", async () => {
+    const { createCache, logger } = await loadCreateCache(true);
+    const cache = createCache<number>(1000, logger as never);
+
+    const validator = vi.fn().mockReturnValue(false);
+    const fetcher = vi.fn().mockResolvedValue(99);
+    await expect(
+      cache.getOrFetchValidated("key", fetcher, validator),
+    ).rejects.toThrow("Fresh value failed validation");
   });
 
   it("returns Upstash cache with child logger when caching is enabled", async () => {

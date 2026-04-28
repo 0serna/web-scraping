@@ -1,25 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiHelpersMocks,
-  createPassthroughCacheGetOrFetchMock,
+  createPassthroughCacheGetOrFetchValidatedMock,
 } from "../../../shared/test-utils/service-test-helpers.js";
 
 interface LoadOptions {
-  getOrFetchImpl?: (
+  getOrFetchValidatedImpl?: (
     key: string,
     fetcher: () => Promise<number>,
+    validator: (value: number) => boolean,
   ) => Promise<number>;
 }
 
 async function loadTradingViewClient(options: LoadOptions = {}) {
   vi.resetModules();
 
-  const getOrFetch = options.getOrFetchImpl
-    ? vi.fn(options.getOrFetchImpl)
-    : createPassthroughCacheGetOrFetchMock<number>();
+  const getOrFetchValidated = options.getOrFetchValidatedImpl
+    ? vi.fn(options.getOrFetchValidatedImpl)
+    : createPassthroughCacheGetOrFetchValidatedMock<number>();
 
   const createCache = vi.fn().mockReturnValue({
-    getOrFetch,
+    getOrFetchValidated,
   });
 
   const { fetchWithTimeout, buildFetchHeaders } = createApiHelpersMocks();
@@ -37,7 +38,7 @@ async function loadTradingViewClient(options: LoadOptions = {}) {
 
   return {
     TradingViewClient,
-    getOrFetch,
+    getOrFetchValidated,
     createCache,
     fetchWithTimeout,
     buildFetchHeaders,
@@ -46,15 +47,16 @@ async function loadTradingViewClient(options: LoadOptions = {}) {
 
 describe("TradingViewClient", () => {
   it("returns null for invalid ticker input", async () => {
-    const { TradingViewClient, getOrFetch } = await loadTradingViewClient();
+    const { TradingViewClient, getOrFetchValidated } =
+      await loadTradingViewClient();
     const client = new TradingViewClient({ child: vi.fn() } as never);
 
     await expect(client.getPriceByTicker("   ")).resolves.toBeNull();
-    expect(getOrFetch).not.toHaveBeenCalled();
+    expect(getOrFetchValidated).not.toHaveBeenCalled();
   });
 
   it("returns normalized ticker and price when fetch succeeds", async () => {
-    const { TradingViewClient, fetchWithTimeout, getOrFetch } =
+    const { TradingViewClient, fetchWithTimeout, getOrFetchValidated } =
       await loadTradingViewClient();
     fetchWithTimeout.mockResolvedValue(
       new Response(JSON.stringify({ close: 1234.5 }), {
@@ -71,8 +73,9 @@ describe("TradingViewClient", () => {
       source: "tradingview",
     });
 
-    expect(getOrFetch).toHaveBeenCalledWith(
+    expect(getOrFetchValidated).toHaveBeenCalledWith(
       "stock:ecopetrol",
+      expect.any(Function),
       expect.any(Function),
     );
     expect(fetchWithTimeout).toHaveBeenCalledTimes(1);
@@ -111,7 +114,7 @@ describe("TradingViewClient", () => {
 
   it("returns null on unexpected cache errors", async () => {
     const { TradingViewClient } = await loadTradingViewClient({
-      getOrFetchImpl: async () => {
+      getOrFetchValidatedImpl: async () => {
         throw new Error("cache error");
       },
     });
@@ -119,5 +122,33 @@ describe("TradingViewClient", () => {
     const client = new TradingViewClient({ child: vi.fn() } as never);
 
     await expect(client.getPriceByTicker("ecopetrol")).resolves.toBeNull();
+  });
+
+  it("refetches when cached price is not finite", async () => {
+    const { TradingViewClient, fetchWithTimeout } = await loadTradingViewClient(
+      {
+        getOrFetchValidatedImpl: async (_key, fetcher, validator) => {
+          const staleValue = Number.NaN;
+          if (!validator(staleValue)) {
+            fetchWithTimeout.mockResolvedValue(
+              new Response(JSON.stringify({ close: 5000 }), {
+                status: 200,
+                headers: { "content-type": "application/json" },
+              }),
+            );
+            return fetcher();
+          }
+          return staleValue;
+        },
+      },
+    );
+
+    const client = new TradingViewClient({ child: vi.fn() } as never);
+
+    await expect(client.getPriceByTicker("ecopetrol")).resolves.toEqual({
+      ticker: "ECOPETROL",
+      price: 5000,
+      source: "tradingview",
+    });
   });
 });

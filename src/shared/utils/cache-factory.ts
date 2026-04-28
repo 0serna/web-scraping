@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import { config } from "../config/index.js";
-import { Cache } from "../types/cache.js";
+import type { Cache } from "../types/cache.js";
 import { UpstashCache } from "./upstash-cache.js";
 
 class NoOpCache<T> implements Cache<T> {
@@ -12,8 +12,24 @@ class NoOpCache<T> implements Cache<T> {
     return;
   }
 
+  async delete(): Promise<void> {
+    return;
+  }
+
   async getOrFetch(_key: string, fetcher: () => Promise<T>): Promise<T> {
     return fetcher();
+  }
+
+  async getOrFetchValidated(
+    _key: string,
+    fetcher: () => Promise<T>,
+    validator: (value: T) => boolean,
+  ): Promise<T> {
+    const value = await fetcher();
+    if (!validator(value)) {
+      throw new Error("Fresh value failed validation");
+    }
+    return value;
   }
 }
 

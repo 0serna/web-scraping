@@ -1,7 +1,7 @@
 import { Redis } from "@upstash/redis";
 import type { FastifyBaseLogger } from "fastify";
 import { config } from "../config/index.js";
-import { Cache } from "../types/cache.js";
+import type { Cache } from "../types/cache.js";
 
 let redisClient: Redis | null = null;
 
@@ -21,7 +21,7 @@ function getRedisClient(): Redis {
 }
 
 export class UpstashCache<T> implements Cache<T> {
-  private redis: Redis;
+  private readonly redis: Redis;
   private pendingRequests = new Map<string, Promise<T>>();
   private readonly ttlSeconds: number;
   private readonly keyPrefix = "ws:";
@@ -62,6 +62,15 @@ export class UpstashCache<T> implements Cache<T> {
     }
   }
 
+  async delete(key: string): Promise<void> {
+    try {
+      const fullKey = this.getFullKey(key);
+      await this.redis.del(fullKey);
+    } catch (error) {
+      this.logger.error({ err: error, key }, "Error deleting value from cache");
+    }
+  }
+
   async getOrFetch(key: string, fetcher: () => Promise<T>): Promise<T> {
     const cached = await this.get(key);
     if (cached !== null) {
@@ -82,6 +91,60 @@ export class UpstashCache<T> implements Cache<T> {
       })
       .catch((error) => {
         this.logger.error({ err: error, key }, "Error fetching value");
+        throw error;
+      })
+      .finally(() => {
+        this.pendingRequests.delete(key);
+      });
+
+    this.pendingRequests.set(key, promise);
+    return promise;
+  }
+
+  async getOrFetchValidated(
+    key: string,
+    fetcher: () => Promise<T>,
+    validator: (value: T) => boolean,
+  ): Promise<T> {
+    const cached = await this.get(key);
+    if (cached !== null) {
+      try {
+        if (validator(cached)) {
+          this.logger.debug({ key }, "Validated cache hit");
+          return cached;
+        }
+      } catch (error) {
+        this.logger.warn(
+          { err: error, key },
+          "Cached value validation threw - treating as stale",
+        );
+      }
+
+      this.logger.info({ key }, "Stale cache invalidation - validation failed");
+      await this.delete(key);
+    }
+
+    const pending = this.pendingRequests.get(key);
+    if (pending) {
+      return pending;
+    }
+
+    const promise = fetcher()
+      .then(async (result) => {
+        if (!validator(result)) {
+          this.logger.warn(
+            { key },
+            "Fresh value failed validation - not storing in cache",
+          );
+          throw new Error(`Fresh value failed validation for key: ${key}`);
+        }
+
+        await this.set(key, result);
+        this.logger.debug({ key }, "Validated cache miss - stored new value");
+        return result;
+      })
+      .catch((error) => {
+        this.logger.error({ err: error, key }, "Error in validated fetch");
         throw error;
       })
       .finally(() => {
