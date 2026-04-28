@@ -10,7 +10,10 @@ interface TickerServiceMock {
   } | null>;
 }
 
-function createServer(triiClient: TickerServiceMock, tradingViewClient: TickerServiceMock) {
+function createServer(
+  triiClient: TickerServiceMock,
+  tradingViewClient: TickerServiceMock,
+) {
   const app = Fastify({ logger: false });
   app.register(tickerRoutes, {
     triiClient: triiClient as never,
@@ -126,7 +129,9 @@ describe("tickerRoutes", () => {
       getPriceByTicker: vi.fn().mockRejectedValue(new Error("trii fail")),
     };
     const tradingViewClient = {
-      getPriceByTicker: vi.fn().mockRejectedValue(new Error("tradingview fail")),
+      getPriceByTicker: vi
+        .fn()
+        .mockRejectedValue(new Error("tradingview fail")),
     };
     const app = createServer(triiClient, tradingViewClient);
     apps.push(app);
@@ -148,7 +153,9 @@ describe("tickerRoutes", () => {
   it("calls TradingView once when Trii misses and TradingView throws", async () => {
     const triiClient = { getPriceByTicker: vi.fn().mockResolvedValue(null) };
     const tradingViewClient = {
-      getPriceByTicker: vi.fn().mockRejectedValue(new Error("tradingview fail")),
+      getPriceByTicker: vi
+        .fn()
+        .mockRejectedValue(new Error("tradingview fail")),
     };
     const app = createServer(triiClient, tradingViewClient);
     apps.push(app);

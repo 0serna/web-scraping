@@ -194,13 +194,18 @@ describe("ModelRankingService", () => {
     };
 
     const clientWithReversedOrder = {
-      getModels: vi.fn().mockResolvedValue([tiedRows[1], tiedRows[0], tiedRows[2]]),
+      getModels: vi
+        .fn()
+        .mockResolvedValue([tiedRows[1], tiedRows[0], tiedRows[2]]),
     };
 
     const serviceA = new ModelRankingService(clientWithFirstOrder as never);
     const serviceB = new ModelRankingService(clientWithReversedOrder as never);
 
-    const [rankingA, rankingB] = await Promise.all([serviceA.getRanking(), serviceB.getRanking()]);
+    const [rankingA, rankingB] = await Promise.all([
+      serviceA.getRanking(),
+      serviceB.getRanking(),
+    ]);
     const modelXA = rankingA.find((entry) => entry.model === "Model X");
     const modelXB = rankingB.find((entry) => entry.model === "Model X");
 

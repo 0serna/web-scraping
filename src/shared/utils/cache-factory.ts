@@ -17,7 +17,10 @@ class NoOpCache<T> implements Cache<T> {
   }
 }
 
-export function createCache<T>(ttlMs: number, logger: FastifyBaseLogger): Cache<T> {
+export function createCache<T>(
+  ttlMs: number,
+  logger: FastifyBaseLogger,
+): Cache<T> {
   if (config.cache.isDisabled) {
     return new NoOpCache<T>();
   }

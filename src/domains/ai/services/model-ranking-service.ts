@@ -39,14 +39,17 @@ function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   if (right.score !== left.score) return right.score - left.score;
   if (right.coding !== left.coding) return right.coding - left.coding;
   if (right.agentic !== left.agentic) return right.agentic - left.agentic;
-  if (left.blendedPrice !== right.blendedPrice) return left.blendedPrice - right.blendedPrice;
+  if (left.blendedPrice !== right.blendedPrice)
+    return left.blendedPrice - right.blendedPrice;
   return left.model.localeCompare(right.model);
 }
 
 export class ModelRankingService {
   private artificialAnalysisClient;
 
-  constructor(artificialAnalysisClient: Pick<ArtificialAnalysisClient, "getModels">) {
+  constructor(
+    artificialAnalysisClient: Pick<ArtificialAnalysisClient, "getModels">,
+  ) {
     this.artificialAnalysisClient = artificialAnalysisClient;
   }
 
@@ -60,7 +63,8 @@ export class ModelRankingService {
           slug: model.slug,
           model: model.model,
           score:
-            model.coding * WEIGHT_INTELLIGENCE_CODING + model.agentic * WEIGHT_INTELLIGENCE_AGENTIC,
+            model.coding * WEIGHT_INTELLIGENCE_CODING +
+            model.agentic * WEIGHT_INTELLIGENCE_AGENTIC,
           coding: model.coding,
           agentic: model.agentic,
           blendedPrice: model.blendedPrice,
@@ -76,7 +80,9 @@ export class ModelRankingService {
     const rankedModels = scoredModels.sort(compareFinalModels);
 
     if (rankedModels[0].score <= 0) {
-      throw new AiParseError("First-ranked model has a non-positive internal score");
+      throw new AiParseError(
+        "First-ranked model has a non-positive internal score",
+      );
     }
 
     const topInternalScore = rankedModels[0].score;

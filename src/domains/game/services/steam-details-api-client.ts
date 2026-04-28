@@ -1,5 +1,11 @@
-import { buildFetchHeaders, fetchWithTimeout } from "../../../shared/utils/api-helpers.js";
-import { type RateLimiter, createRateLimiter } from "../../../shared/utils/global-rate-limiter.js";
+import {
+  buildFetchHeaders,
+  fetchWithTimeout,
+} from "../../../shared/utils/api-helpers.js";
+import {
+  type RateLimiter,
+  createRateLimiter,
+} from "../../../shared/utils/global-rate-limiter.js";
 import { SteamFetchError, SteamParseError } from "../types/errors.js";
 
 interface SteamAppDetailsResponse {
@@ -21,7 +27,9 @@ export class SteamDetailsApiClient {
     this.rateLimiter = createRateLimiter(10);
   }
 
-  async getGameDetailsByAppId(appId: string): Promise<{ name: string; releaseYear?: number }> {
+  async getGameDetailsByAppId(
+    appId: string,
+  ): Promise<{ name: string; releaseYear?: number }> {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
     const response = await this.rateLimiter(() =>
@@ -48,12 +56,16 @@ export class SteamDetailsApiClient {
     }
 
     if (!appData.success || !appData.data) {
-      throw new SteamParseError(`Steam API returned success=false for app ${appId}`);
+      throw new SteamParseError(
+        `Steam API returned success=false for app ${appId}`,
+      );
     }
 
     const gameName = appData.data.name;
     if (!gameName || typeof gameName !== "string") {
-      throw new SteamParseError(`Steam API returned invalid name for app ${appId}`);
+      throw new SteamParseError(
+        `Steam API returned invalid name for app ${appId}`,
+      );
     }
 
     const releaseDate = appData.data.release_date?.date;
@@ -62,7 +74,9 @@ export class SteamDetailsApiClient {
     return { name: gameName, releaseYear };
   }
 
-  private parseReleaseYear(releaseDate: string | undefined): number | undefined {
+  private parseReleaseYear(
+    releaseDate: string | undefined,
+  ): number | undefined {
     if (!releaseDate || typeof releaseDate !== "string") {
       return undefined;
     }

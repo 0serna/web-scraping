@@ -5,7 +5,10 @@ import {
 } from "../../../shared/test-utils/service-test-helpers.js";
 
 interface LoadOptions {
-  getOrFetchImpl?: (key: string, fetcher: () => Promise<number>) => Promise<number>;
+  getOrFetchImpl?: (
+    key: string,
+    fetcher: () => Promise<number>,
+  ) => Promise<number>;
 }
 
 async function loadTradingViewClient(options: LoadOptions = {}) {
@@ -51,7 +54,8 @@ describe("TradingViewClient", () => {
   });
 
   it("returns normalized ticker and price when fetch succeeds", async () => {
-    const { TradingViewClient, fetchWithTimeout, getOrFetch } = await loadTradingViewClient();
+    const { TradingViewClient, fetchWithTimeout, getOrFetch } =
+      await loadTradingViewClient();
     fetchWithTimeout.mockResolvedValue(
       new Response(JSON.stringify({ close: 1234.5 }), {
         status: 200,
@@ -67,12 +71,16 @@ describe("TradingViewClient", () => {
       source: "tradingview",
     });
 
-    expect(getOrFetch).toHaveBeenCalledWith("stock:ecopetrol", expect.any(Function));
+    expect(getOrFetch).toHaveBeenCalledWith(
+      "stock:ecopetrol",
+      expect.any(Function),
+    );
     expect(fetchWithTimeout).toHaveBeenCalledTimes(1);
   });
 
   it("throws BvcFetchError when api response is not ok", async () => {
-    const { TradingViewClient, fetchWithTimeout } = await loadTradingViewClient();
+    const { TradingViewClient, fetchWithTimeout } =
+      await loadTradingViewClient();
     fetchWithTimeout.mockResolvedValue(
       new Response("error", { status: 502, statusText: "Bad Gateway" }),
     );
@@ -85,7 +93,8 @@ describe("TradingViewClient", () => {
   });
 
   it("throws BvcParseError when close is invalid", async () => {
-    const { TradingViewClient, fetchWithTimeout } = await loadTradingViewClient();
+    const { TradingViewClient, fetchWithTimeout } =
+      await loadTradingViewClient();
     fetchWithTimeout.mockResolvedValue(
       new Response(JSON.stringify({ close: "n/a" }), {
         status: 200,

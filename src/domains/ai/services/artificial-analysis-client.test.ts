@@ -11,8 +11,15 @@ interface HtmlPayloadOptions {
   spacedModelsKey?: boolean;
 }
 
-function buildHtmlWithModels(models: unknown[], options: HtmlPayloadOptions = {}): string {
-  const { channel = 1, spacedPushFormat = false, spacedModelsKey = false } = options;
+function buildHtmlWithModels(
+  models: unknown[],
+  options: HtmlPayloadOptions = {},
+): string {
+  const {
+    channel = 1,
+    spacedPushFormat = false,
+    spacedModelsKey = false,
+  } = options;
 
   const decodedChunk = spacedModelsKey
     ? `b:{"models" : ${JSON.stringify(models)}}`
@@ -75,7 +82,8 @@ async function loadArtificialAnalysisClient(options: LoadOptions = {}) {
     buildFetchHeaders,
   }));
 
-  const { ArtificialAnalysisClient } = await import("./artificial-analysis-client.js");
+  const { ArtificialAnalysisClient } =
+    await import("./artificial-analysis-client.js");
 
   return {
     ArtificialAnalysisClient,
@@ -141,7 +149,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses models with variable channel and spacing", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     const html = buildHtmlWithModels(
       [
@@ -181,7 +190,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("throws AiFetchError when page request fails", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
     fetchWithTimeout.mockResolvedValue(
       new Response("error", { status: 503, statusText: "Unavailable" }),
     );
@@ -194,8 +204,11 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("throws AiParseError when models cannot be found", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
-    fetchWithTimeout.mockResolvedValue(new Response("<html></html>", { status: 200 }));
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
+    fetchWithTimeout.mockResolvedValue(
+      new Response("<html></html>", { status: 200 }),
+    );
 
     const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
 
@@ -205,7 +218,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses models distributed across separate chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     // Metadata models (like chunk 31) - no performance data
     const metadataModels = [
@@ -270,7 +284,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles field name variations (isReasoning vs reasoning_model)", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     const html = buildHtmlWithModels([
       {
@@ -323,7 +338,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles missing performance data gracefully", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     // Only metadata, no performance data
     const metadataModels = [
@@ -359,7 +375,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("preserves first-occurrence metadata when same slug appears in multiple chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     // Chunk 1: has isReasoning: true (like chunk 11 from real site)
     const chunk1 = encodeChunk(
@@ -419,7 +436,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses frontier_model from models array", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     const html = buildHtmlWithModels([
       {
@@ -473,7 +491,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("defaults missing frontier_model to false", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     const html = buildHtmlWithModels([
       {
@@ -495,7 +514,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("merges frontier_model from performance data into metadata by slug", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     const metadataModels = [
       {
@@ -535,7 +555,8 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles duplicate slugs with identical metadata in multiple chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
 
     // Chunk 1 and Chunk 2 have same slug with identical metadata
     const chunk1 = encodeChunk(

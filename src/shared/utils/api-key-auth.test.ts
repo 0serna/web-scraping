@@ -2,7 +2,10 @@ import Fastify from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 import { createApiKeyOnRequestHook } from "./api-key-auth.js";
 
-function createServer(auth: { isDisabled: boolean; apiKey: string | undefined }) {
+function createServer(auth: {
+  isDisabled: boolean;
+  apiKey: string | undefined;
+}) {
   const app = Fastify({ logger: false });
   app.addHook("onRequest", createApiKeyOnRequestHook(auth));
   app.get("/health", async () => ({ success: true }));

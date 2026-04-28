@@ -69,7 +69,9 @@ describe("fetchWithTimeout", () => {
   });
 
   it("forwards request options and injects an abort signal", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response("ok", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
 
     const response = await fetchWithTimeout("https://example.com", {
@@ -95,9 +97,13 @@ describe("fetchWithTimeout", () => {
     const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
       const signal = init?.signal as AbortSignal;
       return new Promise<Response>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), {
-          once: true,
-        });
+        signal.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          {
+            once: true,
+          },
+        );
       });
     });
 
@@ -121,9 +127,13 @@ describe("fetchWithTimeout", () => {
     const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
       const signal = init?.signal as AbortSignal;
       return new Promise<Response>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), {
-          once: true,
-        });
+        signal.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          {
+            once: true,
+          },
+        );
       });
     });
 

@@ -43,7 +43,8 @@ async function loadSteamReviewsApiClient(options: LoadOptions = {}) {
     handleSteamError,
   }));
 
-  const { SteamReviewsApiClient } = await import("./steam-reviews-api-client.js");
+  const { SteamReviewsApiClient } =
+    await import("./steam-reviews-api-client.js");
 
   return {
     SteamReviewsApiClient,
@@ -81,9 +82,14 @@ describe("SteamReviewsApiClient", () => {
       ),
     );
 
-    const client = new SteamReviewsApiClient({ warn: vi.fn(), error: vi.fn() } as never);
+    const client = new SteamReviewsApiClient({
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
 
-    await expect(client.getScoreByAppId("47780")).resolves.toEqual({ score: 66.67 });
+    await expect(client.getScoreByAppId("47780")).resolves.toEqual({
+      score: 66.67,
+    });
 
     expect(createRateLimiter).toHaveBeenCalledWith(10);
     expect(rateLimiter).toHaveBeenCalledTimes(1);
@@ -101,7 +107,8 @@ describe("SteamReviewsApiClient", () => {
   });
 
   it("throws SteamFetchError when response is not ok", async () => {
-    const { SteamReviewsApiClient, fetchWithTimeout } = await loadSteamReviewsApiClient();
+    const { SteamReviewsApiClient, fetchWithTimeout } =
+      await loadSteamReviewsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response("error", {
@@ -110,7 +117,10 @@ describe("SteamReviewsApiClient", () => {
       }),
     );
 
-    const client = new SteamReviewsApiClient({ warn: vi.fn(), error: vi.fn() } as never);
+    const client = new SteamReviewsApiClient({
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
 
     await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
       name: "SteamFetchError",
@@ -118,7 +128,8 @@ describe("SteamReviewsApiClient", () => {
   });
 
   it("throws SteamParseError when success flag is not 1", async () => {
-    const { SteamReviewsApiClient, fetchWithTimeout } = await loadSteamReviewsApiClient();
+    const { SteamReviewsApiClient, fetchWithTimeout } =
+      await loadSteamReviewsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -136,7 +147,10 @@ describe("SteamReviewsApiClient", () => {
       ),
     );
 
-    const client = new SteamReviewsApiClient({ warn: vi.fn(), error: vi.fn() } as never);
+    const client = new SteamReviewsApiClient({
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
 
     await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",
@@ -144,7 +158,8 @@ describe("SteamReviewsApiClient", () => {
   });
 
   it("throws SteamParseError when score cannot be calculated", async () => {
-    const { SteamReviewsApiClient, fetchWithTimeout } = await loadSteamReviewsApiClient();
+    const { SteamReviewsApiClient, fetchWithTimeout } =
+      await loadSteamReviewsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -162,7 +177,10 @@ describe("SteamReviewsApiClient", () => {
       ),
     );
 
-    const client = new SteamReviewsApiClient({ warn: vi.fn(), error: vi.fn() } as never);
+    const client = new SteamReviewsApiClient({
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
 
     await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
       name: "SteamParseError",

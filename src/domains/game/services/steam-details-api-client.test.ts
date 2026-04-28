@@ -22,7 +22,8 @@ async function loadSteamDetailsApiClient() {
     createRateLimiter,
   }));
 
-  const { SteamDetailsApiClient } = await import("./steam-details-api-client.js");
+  const { SteamDetailsApiClient } =
+    await import("./steam-details-api-client.js");
 
   return {
     SteamDetailsApiClient,
@@ -86,7 +87,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("throws SteamFetchError when response is not ok", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response("error", {
@@ -103,7 +105,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("throws SteamParseError when app data is missing", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(JSON.stringify({}), {
@@ -120,7 +123,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("throws SteamParseError when steam marks app as unsuccessful", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -144,7 +148,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("throws SteamParseError when game name is invalid", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -171,7 +176,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("returns undefined releaseYear when release date is 'Coming Soon'", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -202,7 +208,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("returns undefined releaseYear when release_date is missing", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
       new Response(
@@ -230,7 +237,8 @@ describe("SteamDetailsApiClient", () => {
   });
 
   it("extracts year from various date formats", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } = await loadSteamDetailsApiClient();
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
 
     const testCases = [
       { input: "Q1 2024", expected: 2024 },

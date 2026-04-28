@@ -54,7 +54,8 @@ async function loadCreateCache(cacheDisabled: boolean) {
 
 describe("createCache", () => {
   it("returns no-op cache when caching is disabled", async () => {
-    const { createCache, logger, upstashConstructorSpy } = await loadCreateCache(true);
+    const { createCache, logger, upstashConstructorSpy } =
+      await loadCreateCache(true);
     const cache = createCache<number>(1000, logger as never);
 
     expect(logger.child).not.toHaveBeenCalled();
@@ -69,8 +70,13 @@ describe("createCache", () => {
   });
 
   it("returns Upstash cache with child logger when caching is enabled", async () => {
-    const { createCache, logger, childLogger, UpstashCacheMock, upstashConstructorSpy } =
-      await loadCreateCache(false);
+    const {
+      createCache,
+      logger,
+      childLogger,
+      UpstashCacheMock,
+      upstashConstructorSpy,
+    } = await loadCreateCache(false);
 
     const cache = createCache<number>(2500, logger as never);
 

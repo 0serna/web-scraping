@@ -66,7 +66,10 @@ describe("TriiClient", () => {
       price: 1234.56,
       source: "trii",
     });
-    expect(getOrFetch).toHaveBeenCalledWith("trii-stock-list", expect.any(Function));
+    expect(getOrFetch).toHaveBeenCalledWith(
+      "trii-stock-list",
+      expect.any(Function),
+    );
   });
 
   it("throws BvcFetchError when html request fails", async () => {

@@ -1,5 +1,8 @@
 import type { FastifyBaseLogger } from "fastify";
-import { buildFetchHeaders, fetchWithTimeout } from "../../../shared/utils/api-helpers.js";
+import {
+  buildFetchHeaders,
+  fetchWithTimeout,
+} from "../../../shared/utils/api-helpers.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { AiFetchError, AiParseError } from "../types/errors.js";
 import {
@@ -20,12 +23,17 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function extractJsonArrayText(source: string, arrayStartIndex: number): string | null {
+function extractBalancedJsonText(
+  source: string,
+  startIndex: number,
+  openChar: "[" | "{",
+  closeChar: "]" | "}",
+): string | null {
   let depth = 0;
   let inString = false;
   let escaped = false;
 
-  for (let index = arrayStartIndex; index < source.length; index++) {
+  for (let index = startIndex; index < source.length; index++) {
     const char = source[index];
 
     if (inString) {
@@ -51,15 +59,15 @@ function extractJsonArrayText(source: string, arrayStartIndex: number): string |
       continue;
     }
 
-    if (char === "[") {
+    if (char === openChar) {
       depth += 1;
       continue;
     }
 
-    if (char === "]") {
+    if (char === closeChar) {
       depth -= 1;
       if (depth === 0) {
-        return source.slice(arrayStartIndex, index + 1);
+        return source.slice(startIndex, index + 1);
       }
     }
   }
@@ -67,58 +75,25 @@ function extractJsonArrayText(source: string, arrayStartIndex: number): string |
   return null;
 }
 
-function extractJsonObjectText(source: string, objectStartIndex: number): string | null {
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
+function extractJsonArrayText(
+  source: string,
+  arrayStartIndex: number,
+): string | null {
+  return extractBalancedJsonText(source, arrayStartIndex, "[", "]");
+}
 
-  for (let index = objectStartIndex; index < source.length; index++) {
-    const char = source[index];
-
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-
-      if (char === "\\") {
-        escaped = true;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = false;
-      }
-
-      continue;
-    }
-
-    if (char === '"') {
-      inString = true;
-      continue;
-    }
-
-    if (char === "{") {
-      depth += 1;
-      continue;
-    }
-
-    if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(objectStartIndex, index + 1);
-      }
-    }
-  }
-
-  return null;
+function extractJsonObjectText(
+  source: string,
+  objectStartIndex: number,
+): string | null {
+  return extractBalancedJsonText(source, objectStartIndex, "{", "}");
 }
 
 function extractNextFlightPayloadChunks(html: string): string[] {
   const chunks: string[] = [];
   const chunkRegex = new RegExp(NEXT_FLIGHT_CHUNK_PATTERN, "g");
 
-  let chunkMatch: RegExpExecArray | null = null;
+  let chunkMatch: RegExpExecArray | null;
   while ((chunkMatch = chunkRegex.exec(html)) !== null) {
     const rawChunk = chunkMatch[1] ?? "";
     try {
@@ -131,7 +106,9 @@ function extractNextFlightPayloadChunks(html: string): string[] {
   return chunks;
 }
 
-function normalizeModel(rawModel: RawArtificialAnalysisModel): ArtificialAnalysisModel | null {
+function normalizeModel(
+  rawModel: RawArtificialAnalysisModel,
+): ArtificialAnalysisModel | null {
   const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
   if (!name || name.trim().length === 0) return null;
   const slug = typeof rawModel.slug === "string" ? rawModel.slug.trim() : "";
@@ -140,10 +117,15 @@ function normalizeModel(rawModel: RawArtificialAnalysisModel): ArtificialAnalysi
   return {
     slug,
     model: name.trim(),
-    reasoningModel: rawModel.reasoning_model === true || rawModel.isReasoning === true,
+    reasoningModel:
+      rawModel.reasoning_model === true || rawModel.isReasoning === true,
     frontierModel: rawModel.frontier_model === true,
-    agentic: isFiniteNumber(rawModel.agentic_index) ? rawModel.agentic_index : null,
-    coding: isFiniteNumber(rawModel.coding_index) ? rawModel.coding_index : null,
+    agentic: isFiniteNumber(rawModel.agentic_index)
+      ? rawModel.agentic_index
+      : null,
+    coding: isFiniteNumber(rawModel.coding_index)
+      ? rawModel.coding_index
+      : null,
     blendedPrice: isFiniteNumber(rawModel.price_1m_blended_3_to_1)
       ? rawModel.price_1m_blended_3_to_1
       : null,
@@ -156,11 +138,13 @@ function normalizeModel(rawModel: RawArtificialAnalysisModel): ArtificialAnalysi
   };
 }
 
-function extractModelsFromModelsArray(decodedChunk: string): ArtificialAnalysisModel[] {
+function extractModelsFromModelsArray(
+  decodedChunk: string,
+): ArtificialAnalysisModel[] {
   const models: ArtificialAnalysisModel[] = [];
   const modelsKeyRegex = new RegExp(MODELS_KEY_PATTERN, "g");
 
-  let modelKeyMatch: RegExpExecArray | null = null;
+  let modelKeyMatch: RegExpExecArray | null;
   while ((modelKeyMatch = modelsKeyRegex.exec(decodedChunk)) !== null) {
     const arrayStartIndex = modelKeyMatch.index + modelKeyMatch[0].length - 1;
     const arrayText = extractJsonArrayText(decodedChunk, arrayStartIndex);
@@ -191,11 +175,13 @@ function extractModelsFromModelsArray(decodedChunk: string): ArtificialAnalysisM
   return models;
 }
 
-function extractPerformanceDataFromChunk(decodedChunk: string): PerformanceData[] {
+function extractPerformanceDataFromChunk(
+  decodedChunk: string,
+): PerformanceData[] {
   const models: PerformanceData[] = [];
   const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
 
-  let match: RegExpExecArray | null = null;
+  let match: RegExpExecArray | null;
   while ((match = performanceRegex.exec(decodedChunk)) !== null) {
     // Find the start of the containing object by backtracking to find the opening brace
     let objectStartIndex = match.index;
@@ -234,8 +220,12 @@ function extractPerformanceDataFromChunk(decodedChunk: string): PerformanceData[
         blendedPrice: isFiniteNumber(raw.price_1m_blended_3_to_1)
           ? raw.price_1m_blended_3_to_1
           : null,
-        inputPrice: isFiniteNumber(raw.price_1m_input_tokens) ? raw.price_1m_input_tokens : null,
-        outputPrice: isFiniteNumber(raw.price_1m_output_tokens) ? raw.price_1m_output_tokens : null,
+        inputPrice: isFiniteNumber(raw.price_1m_input_tokens)
+          ? raw.price_1m_input_tokens
+          : null,
+        outputPrice: isFiniteNumber(raw.price_1m_output_tokens)
+          ? raw.price_1m_output_tokens
+          : null,
       });
     } catch {
       // Ignore malformed objects and continue scanning.
@@ -328,23 +318,26 @@ export class ArtificialAnalysisClient {
   }
 
   async getModels(): Promise<ArtificialAnalysisModel[]> {
-    return this.modelsCache.getOrFetch(ARTIFICIAL_ANALYSIS_CACHE_KEY, async () => {
-      const response = await fetchWithTimeout(ARTIFICIAL_ANALYSIS_URL, {
-        headers: buildFetchHeaders({
-          accept: "text/html,application/xhtml+xml",
-        }),
-      });
+    return this.modelsCache.getOrFetch(
+      ARTIFICIAL_ANALYSIS_CACHE_KEY,
+      async () => {
+        const response = await fetchWithTimeout(ARTIFICIAL_ANALYSIS_URL, {
+          headers: buildFetchHeaders({
+            accept: "text/html,application/xhtml+xml",
+          }),
+        });
 
-      if (!response.ok) {
-        throw new AiFetchError(
-          "Failed to fetch Artificial Analysis page",
-          response.status,
-          response.statusText,
-        );
-      }
+        if (!response.ok) {
+          throw new AiFetchError(
+            "Failed to fetch Artificial Analysis page",
+            response.status,
+            response.statusText,
+          );
+        }
 
-      const html = await response.text();
-      return parseModelsFromHtml(html);
-    });
+        const html = await response.text();
+        return parseModelsFromHtml(html);
+      },
+    );
   }
 }

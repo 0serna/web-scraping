@@ -7,12 +7,14 @@ Artificial Analysis exposes the UI filter as `model-filters=frontier-model` and 
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Preserve the upstream `frontier_model` value in normalized AI model data.
 - Filter to reasoning frontier models before calculating percentile-based efficiency and final scores.
 - Keep the `/ranking` response shape and route behavior unchanged.
 - Cover parsing, merging, and ranking behavior with focused tests.
 
 **Non-Goals:**
+
 - Do not add a request parameter or alternate ranking mode.
 - Do not include frontier non-reasoning models.
 - Do not use the URL `models` parameter as a fixed allowlist.

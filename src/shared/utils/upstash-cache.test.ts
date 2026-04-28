@@ -206,7 +206,9 @@ describe("UpstashCache", () => {
       .mockRejectedValueOnce(new Error("fetch-error"))
       .mockResolvedValueOnce(81);
 
-    await expect(cache.getOrFetch("game:1", fetcher)).rejects.toThrow("fetch-error");
+    await expect(cache.getOrFetch("game:1", fetcher)).rejects.toThrow(
+      "fetch-error",
+    );
     await expect(cache.getOrFetch("game:1", fetcher)).resolves.toBe(81);
     expect(fetcher).toHaveBeenCalledTimes(2);
   });

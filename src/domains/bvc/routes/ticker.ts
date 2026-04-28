@@ -14,56 +14,73 @@ interface TickerRoutesOptions {
   tradingViewClient: TradingViewClient;
 }
 
-export const tickerRoutes: FastifyPluginAsync<TickerRoutesOptions> = async (fastify, opts) => {
+export const tickerRoutes: FastifyPluginAsync<TickerRoutesOptions> = async (
+  fastify,
+  opts,
+) => {
   const { triiClient, tradingViewClient } = opts;
 
-  fastify.get<{ Params: TickerParams }>("/ticker/:ticker", async (request, reply) => {
-    const { ticker } = request.params;
+  fastify.get<{ Params: TickerParams }>(
+    "/ticker/:ticker",
+    async (request, reply) => {
+      const { ticker } = request.params;
 
-    const normalizedTicker = normalizeTicker(ticker);
-    if (!normalizedTicker) {
-      await sendError(reply, 400, "INVALID_TICKER", "Ticker is required");
-      return;
-    }
+      const normalizedTicker = normalizeTicker(ticker);
+      if (!normalizedTicker) {
+        await sendError(reply, 400, "INVALID_TICKER", "Ticker is required");
+        return;
+      }
 
-    let hadProviderError = false;
-    let result: TickerData | null = null;
+      let hadProviderError = false;
+      let result: TickerData | null = null;
 
-    try {
-      result = await triiClient.getPriceByTicker(normalizedTicker);
-    } catch (error) {
-      hadProviderError = true;
-      fastify.log.error({ err: error }, "Error fetching ticker from Trii");
-      fastify.log.info({ ticker: normalizedTicker }, "Trii failed, trying TradingView as fallback");
-    }
+      try {
+        result = await triiClient.getPriceByTicker(normalizedTicker);
+      } catch (error) {
+        hadProviderError = true;
+        fastify.log.error({ err: error }, "Error fetching ticker from Trii");
+        fastify.log.info(
+          { ticker: normalizedTicker },
+          "Trii failed, trying TradingView as fallback",
+        );
+      }
 
-    if (result !== null) {
-      return reply.code(200).send(result);
-    }
+      if (result !== null) {
+        return reply.code(200).send(result);
+      }
 
-    if (!hadProviderError) {
-      fastify.log.info(
-        { ticker: normalizedTicker },
-        "Ticker not found in Trii, trying TradingView",
-      );
-    }
+      if (!hadProviderError) {
+        fastify.log.info(
+          { ticker: normalizedTicker },
+          "Ticker not found in Trii, trying TradingView",
+        );
+      }
 
-    try {
-      result = await tradingViewClient.getPriceByTicker(normalizedTicker);
-    } catch (error) {
-      hadProviderError = true;
-      fastify.log.error({ err: error }, "Error fetching ticker from TradingView");
-    }
+      try {
+        result = await tradingViewClient.getPriceByTicker(normalizedTicker);
+      } catch (error) {
+        hadProviderError = true;
+        fastify.log.error(
+          { err: error },
+          "Error fetching ticker from TradingView",
+        );
+      }
 
-    if (result !== null) {
-      return reply.code(200).send(result);
-    }
+      if (result !== null) {
+        return reply.code(200).send(result);
+      }
 
-    if (!hadProviderError) {
-      await sendError(reply, 404, "TICKER_NOT_FOUND", `Ticker "${normalizedTicker}" not found`);
-      return;
-    }
+      if (!hadProviderError) {
+        await sendError(
+          reply,
+          404,
+          "TICKER_NOT_FOUND",
+          `Ticker "${normalizedTicker}" not found`,
+        );
+        return;
+      }
 
-    await sendError(reply, 502, "FETCH_ERROR", "Error fetching ticker price");
-  });
+      await sendError(reply, 502, "FETCH_ERROR", "Error fetching ticker price");
+    },
+  );
 };

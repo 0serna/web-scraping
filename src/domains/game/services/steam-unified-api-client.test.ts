@@ -11,10 +11,14 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
 
   const getGameDetailsByAppId = vi
     .fn()
-    .mockResolvedValue(options.gameDetails ?? { name: "Dead Space 2", releaseYear: 2011 });
+    .mockResolvedValue(
+      options.gameDetails ?? { name: "Dead Space 2", releaseYear: 2011 },
+    );
   const getScoreByAppId = vi
     .fn()
-    .mockResolvedValue(options.scoreResult === undefined ? { score: 91.4 } : options.scoreResult);
+    .mockResolvedValue(
+      options.scoreResult === undefined ? { score: 91.4 } : options.scoreResult,
+    );
 
   const detailsConstructorSpy = vi.fn();
   const reviewsConstructorSpy = vi.fn();
@@ -38,7 +42,11 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
   const getOrFetch = vi.fn(
     async (
       _key: string,
-      fetcher: () => Promise<{ name: string; score: number; releaseYear?: number }>,
+      fetcher: () => Promise<{
+        name: string;
+        score: number;
+        releaseYear?: number;
+      }>,
     ) => {
       if (options.cacheResult) {
         return options.cacheResult;
@@ -63,7 +71,8 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
     SteamReviewsApiClient: SteamReviewsApiClientMock,
   }));
 
-  const { createSteamUnifiedApiClient } = await import("./steam-unified-api-client.js");
+  const { createSteamUnifiedApiClient } =
+    await import("./steam-unified-api-client.js");
 
   return {
     createSteamUnifiedApiClient,
@@ -96,16 +105,22 @@ describe("createSteamUnifiedApiClient", () => {
     });
 
     expect(createCache).toHaveBeenCalledWith(1296000000, logger);
-    expect(getOrFetch).toHaveBeenCalledWith("steam:47780", expect.any(Function));
+    expect(getOrFetch).toHaveBeenCalledWith(
+      "steam:47780",
+      expect.any(Function),
+    );
     expect(getGameDetailsByAppId).toHaveBeenCalledWith("47780");
     expect(getScoreByAppId).toHaveBeenCalledWith("47780");
   });
 
   it("uses cache result without calling API clients", async () => {
-    const { createSteamUnifiedApiClient, getGameDetailsByAppId, getScoreByAppId } =
-      await loadSteamUnifiedClient({
-        cacheResult: { name: "Cached Name", score: 88, releaseYear: 2020 },
-      });
+    const {
+      createSteamUnifiedApiClient,
+      getGameDetailsByAppId,
+      getScoreByAppId,
+    } = await loadSteamUnifiedClient({
+      cacheResult: { name: "Cached Name", score: 88, releaseYear: 2020 },
+    });
 
     const logger = { child: vi.fn() };
     const client = createSteamUnifiedApiClient(logger as never);

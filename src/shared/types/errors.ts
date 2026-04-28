@@ -2,7 +2,12 @@ export class DomainFetchError extends Error {
   public readonly statusCode: number;
   public readonly statusText: string;
 
-  constructor(name: string, message: string, statusCode: number, statusText: string) {
+  constructor(
+    name: string,
+    message: string,
+    statusCode: number,
+    statusText: string,
+  ) {
     super(message);
     this.name = name;
     this.statusCode = statusCode;

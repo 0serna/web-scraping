@@ -1,4 +1,7 @@
-import { DomainFetchError, DomainParseError } from "../../../shared/types/errors.js";
+import {
+  DomainFetchError,
+  DomainParseError,
+} from "../../../shared/types/errors.js";
 
 export class BvcFetchError extends DomainFetchError {
   constructor(message: string, statusCode: number, statusText: string) {

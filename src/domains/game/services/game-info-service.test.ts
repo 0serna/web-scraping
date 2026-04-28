@@ -43,7 +43,8 @@ describe("GameInfoService", () => {
   });
 
   it("factory creates service instance", async () => {
-    const { createGameInfoService, GameInfoService } = await loadGameInfoService();
+    const { createGameInfoService, GameInfoService } =
+      await loadGameInfoService();
     const logger = { child: vi.fn() };
 
     const service = createGameInfoService(logger as never);

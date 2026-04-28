@@ -17,7 +17,10 @@ class SteamUnifiedApiClient {
   private steamReviewsApiClient: SteamReviewsApiClient;
 
   constructor(logger: FastifyBaseLogger) {
-    this.steamGameDataCache = createCache<GameData>(STEAM_GAME_DATA_CACHE_TTL_MS, logger);
+    this.steamGameDataCache = createCache<GameData>(
+      STEAM_GAME_DATA_CACHE_TTL_MS,
+      logger,
+    );
     this.steamDetailsApiClient = new SteamDetailsApiClient();
     this.steamReviewsApiClient = new SteamReviewsApiClient(logger);
   }
@@ -25,26 +28,29 @@ class SteamUnifiedApiClient {
   async getGameData(appId: string): Promise<GameData> {
     const cacheKey = `steam:${appId}`;
 
-    const result = await this.steamGameDataCache.getOrFetch(cacheKey, async () => {
-      const [gameDetails, score] = await Promise.all([
-        this.steamDetailsApiClient.getGameDetailsByAppId(appId),
-        this.steamReviewsApiClient.getScoreByAppId(appId),
-      ]);
+    const result = await this.steamGameDataCache.getOrFetch(
+      cacheKey,
+      async () => {
+        const [gameDetails, score] = await Promise.all([
+          this.steamDetailsApiClient.getGameDetailsByAppId(appId),
+          this.steamReviewsApiClient.getScoreByAppId(appId),
+        ]);
 
-      if (score === null) {
-        throw new Error(`Steam score is unavailable for app ${appId}`);
-      }
+        if (score === null) {
+          throw new Error(`Steam score is unavailable for app ${appId}`);
+        }
 
-      if (!Number.isFinite(score.score)) {
-        throw new Error(`Steam score is invalid for app ${appId}`);
-      }
+        if (!Number.isFinite(score.score)) {
+          throw new Error(`Steam score is invalid for app ${appId}`);
+        }
 
-      return {
-        name: gameDetails.name,
-        score: score.score,
-        releaseYear: gameDetails.releaseYear,
-      };
-    });
+        return {
+          name: gameDetails.name,
+          score: score.score,
+          releaseYear: gameDetails.releaseYear,
+        };
+      },
+    );
 
     return result;
   }

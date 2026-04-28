@@ -11,11 +11,13 @@ The same model (e.g., `gpt-5-4-mini`) exists in both chunks but with **different
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Preserve all fields from all chunks when merging model data
 - Ensure `isReasoning`, `shortName`, `creator` metadata is not lost during deduplication
 - Maintain correct slug-based deduplication (one entry per slug in final output)
 
 **Non-Goals:**
+
 - Changing the chunk extraction logic (chunks are extracted correctly)
 - Modifying `extractModelsFromModelsArray` or `extractPerformanceDataFromChunk`
 - Adding new fields - just preserving existing data
@@ -28,12 +30,14 @@ The same model (e.g., `gpt-5-4-mini`) exists in both chunks but with **different
 
 **Solution**: Change deduplication to use **"first wins"** semantics - keep the first occurrence of each slug and discard subsequent duplicates.
 
-**Rationale**: 
+**Rationale**:
+
 - Chunk 11 appears earlier in the HTML and contains the canonical metadata
 - Preserving first occurrences maintains data integrity for fields like `isReasoning`
 - "First wins" is safer when chunks contain partial data
 
 **Alternatives considered**:
+
 - "Last wins" (current): Loses metadata from earlier chunks ❌
 - Deep merge all fields: Complex and unnecessary given chunk structure ✓
 - Deduplicate after merge: Would still have duplicate slugs in intermediate arrays
@@ -45,7 +49,8 @@ The same model (e.g., `gpt-5-4-mini`) exists in both chunks but with **different
 
 **Solution**: Option A with corrected semantics - deduplicate `metadataModels` before merge using "first wins".
 
-**Rationale**: 
+**Rationale**:
+
 - `mergeModelData` already handles slug-based merging of performance data
 - Deduplicating metadata first ensures we don't lose metadata fields
 - Simpler than changing the merge function

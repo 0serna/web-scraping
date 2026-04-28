@@ -12,9 +12,11 @@ The `/ai/ranking` endpoint is returning `SCRAPING_ERROR` (502) because the targe
 ## Capabilities
 
 ### New Capabilities
-- *(none - this is a fix to existing capability)*
+
+- _(none - this is a fix to existing capability)_
 
 ### Modified Capabilities
+
 - `ai-model-ranking`: Update parsing logic to handle fragmented data across multiple flight chunks instead of single chunk
 
 ## Impact

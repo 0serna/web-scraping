@@ -12,9 +12,11 @@ The AI ranking currently includes any reasoning model with required scoring and 
 ## Capabilities
 
 ### New Capabilities
+
 - None.
 
 ### Modified Capabilities
+
 - `ai-model-ranking`: Ranking eligibility changes to include only reasoning models marked as frontier by Artificial Analysis before scoring.
 
 ## Impact

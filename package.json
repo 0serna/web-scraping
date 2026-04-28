@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
-    "check": "biome check --write",
+    "check": "prettier --check . && eslint . && tsc --noEmit",
     "test": "vitest run",
     "prepare": "husky"
   },
@@ -17,19 +17,29 @@
     "p-limit": "^7.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
+    "prettier": "^3.8.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.59.1",
     "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "lint-staged": {
-    "*.ts": ["biome check --write", "bash -c 'tsc --noEmit'"]
+    "*.{ts,js,json,md}": [
+      "prettier --write"
+    ],
+    "*.ts": [
+      "eslint --fix",
+      "bash -c 'tsc --noEmit'"
+    ]
   }
 }

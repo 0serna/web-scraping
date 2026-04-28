@@ -1,5 +1,8 @@
 import type { FastifyBaseLogger } from "fastify";
-import { buildFetchHeaders, fetchWithTimeout } from "../../../shared/utils/api-helpers.js";
+import {
+  buildFetchHeaders,
+  fetchWithTimeout,
+} from "../../../shared/utils/api-helpers.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
@@ -24,7 +27,8 @@ function parsePrice(raw: string): number | null {
 function parseTriiStockListHtml(html: string): TriiPriceMap {
   const map: TriiPriceMap = {};
 
-  const sectionRegex = /<div\s+id="(?:local|global)"[\s\S]*?<\/div>\s*<\/section>/g;
+  const sectionRegex =
+    /<div\s+id="(?:local|global)"[\s\S]*?<\/div>\s*<\/section>/g;
 
   const sections = html.match(sectionRegex) ?? [html];
 
@@ -32,7 +36,7 @@ function parseTriiStockListHtml(html: string): TriiPriceMap {
     /<h3>\s*([^<\s]+)\s*<\/h3>[\s\S]*?<div\s+class="title">\s*\$\s*([^<]+?)\s*<\/div>/g;
 
   for (const sectionHtml of sections) {
-    let match: RegExpExecArray | null = null;
+    let match: RegExpExecArray | null;
     while ((match = cardRegex.exec(sectionHtml)) !== null) {
       const ticker = match[1]?.trim().toLowerCase();
       const priceRaw = match[2] ?? "";
@@ -70,24 +74,27 @@ export class TriiClient {
     const normalizedTicker = normalizeTicker(ticker);
     if (!normalizedTicker) return null;
 
-    const priceMap = await this.triiCache.getOrFetch(TRII_CACHE_KEY, async () => {
-      const response = await fetchWithTimeout(TRII_STOCK_LIST_URL, {
-        headers: buildFetchHeaders({
-          accept: "text/html,application/xhtml+xml",
-        }),
-      });
+    const priceMap = await this.triiCache.getOrFetch(
+      TRII_CACHE_KEY,
+      async () => {
+        const response = await fetchWithTimeout(TRII_STOCK_LIST_URL, {
+          headers: buildFetchHeaders({
+            accept: "text/html,application/xhtml+xml",
+          }),
+        });
 
-      if (!response.ok) {
-        throw new BvcFetchError(
-          `Failed to fetch Trii stock list`,
-          response.status,
-          response.statusText,
-        );
-      }
+        if (!response.ok) {
+          throw new BvcFetchError(
+            `Failed to fetch Trii stock list`,
+            response.status,
+            response.statusText,
+          );
+        }
 
-      const html = await response.text();
-      return parseTriiStockListHtml(html);
-    });
+        const html = await response.text();
+        return parseTriiStockListHtml(html);
+      },
+    );
 
     const price = priceMap[normalizedTicker] ?? null;
     if (price === null) return null;
