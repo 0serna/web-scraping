@@ -141,6 +141,7 @@ function normalizeModel(rawModel: RawArtificialAnalysisModel): ArtificialAnalysi
     slug,
     model: name.trim(),
     reasoningModel: rawModel.reasoning_model === true || rawModel.isReasoning === true,
+    frontierModel: rawModel.frontier_model === true,
     agentic: isFiniteNumber(rawModel.agentic_index) ? rawModel.agentic_index : null,
     coding: isFiniteNumber(rawModel.coding_index) ? rawModel.coding_index : null,
     blendedPrice: isFiniteNumber(rawModel.price_1m_blended_3_to_1)
@@ -227,6 +228,7 @@ function extractPerformanceDataFromChunk(decodedChunk: string): PerformanceData[
 
       models.push({
         slug,
+        frontierModel: raw.frontier_model === true,
         coding: isFiniteNumber(raw.coding_index) ? raw.coding_index : null,
         agentic: isFiniteNumber(raw.agentic_index) ? raw.agentic_index : null,
         blendedPrice: isFiniteNumber(raw.price_1m_blended_3_to_1)
@@ -261,6 +263,7 @@ function mergeModelData(
 
     return {
       ...metaModel,
+      frontierModel: perf.frontierModel ?? metaModel.frontierModel,
       coding: perf.coding ?? metaModel.coding,
       agentic: perf.agentic ?? metaModel.agentic,
       blendedPrice: perf.blendedPrice ?? metaModel.blendedPrice,

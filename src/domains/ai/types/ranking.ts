@@ -2,6 +2,7 @@ export interface ArtificialAnalysisModel {
   slug: string;
   model: string;
   reasoningModel: boolean;
+  frontierModel: boolean;
   agentic: number | null;
   coding: number | null;
   blendedPrice: number | null;
@@ -19,6 +20,7 @@ export interface RankedModel {
 export interface RawArtificialAnalysisModel {
   slug?: string;
   reasoning_model?: boolean;
+  frontier_model?: boolean;
   isReasoning?: boolean;
   short_name?: string;
   model_name?: string;
@@ -32,6 +34,7 @@ export interface RawArtificialAnalysisModel {
 
 export interface PerformanceData {
   slug: string;
+  frontierModel: boolean;
   coding: number | null;
   agentic: number | null;
   blendedPrice: number | null;

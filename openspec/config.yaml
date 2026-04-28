@@ -4,12 +4,12 @@ context: |
   Tech stack: Node.js 22+, TypeScript, Fastify, Vitest, Biome
   Domain-driven architecture: src/domains/ with routes, services, types
 
-  For validation always use MCP DevTools to navigate, snapshot,
+  For validation always use DevTools or Playwriter to navigate, snapshot,
   analyze network requests, and test selectors on target websites.
 
 rules:
   proposal:
-    - Identify affected domain(s) and rate limiting strategy
+    - Identify affected domain(s)
     - Take into account the project documentation `docs/`
   tasks:
     - Add tests for each scenario

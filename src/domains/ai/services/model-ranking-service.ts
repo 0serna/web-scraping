@@ -1,18 +1,19 @@
 import { AiParseError } from "../types/errors.js";
-import { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
+import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-const WEIGHT_INTELLIGENCE_CODING = 0.6;
-const WEIGHT_INTELLIGENCE_AGENTIC = 0.4;
+const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
+const WEIGHT_INTELLIGENCE_CODING = 0.4;
 
-const WEIGHT_FINAL_INTELLIGENCE = 0.8;
-const WEIGHT_FINAL_EFFICIENCY = 0.2;
-
+const EFFICIENCY_BONUS = 0.3;
 const RANKING_LIMIT = 15;
 
-function hasRequiredFields(model: ArtificialAnalysisModel): model is ArtificialAnalysisModel & {
+function isRankableFrontierReasoningModel(
+  model: ArtificialAnalysisModel,
+): model is ArtificialAnalysisModel & {
   slug: string;
   reasoningModel: true;
+  frontierModel: true;
   coding: number;
   agentic: number;
   blendedPrice: number;
@@ -20,10 +21,11 @@ function hasRequiredFields(model: ArtificialAnalysisModel): model is ArtificialA
   return (
     model.slug.length > 0 &&
     model.reasoningModel === true &&
+    model.frontierModel === true &&
     model.coding !== null &&
     model.agentic !== null &&
     model.blendedPrice !== null &&
-    model.blendedPrice > 0
+    model.blendedPrice >= 0
   );
 }
 
@@ -39,6 +41,7 @@ interface ScoredModel {
 
 function toEfficiency(baseScore: number, price: number): number {
   if (baseScore <= 0) return 0;
+  if (price <= 0) return 0;
   return baseScore / Math.sqrt(price);
 }
 
@@ -80,21 +83,23 @@ export class ModelRankingService {
   async getRanking(): Promise<RankedModel[]> {
     const models = await this.artificialAnalysisClient.getModels();
 
-    const scoredModels: ScoredModel[] = models.filter(hasRequiredFields).map((model) => {
-      const baseScore =
-        model.coding * WEIGHT_INTELLIGENCE_CODING + model.agentic * WEIGHT_INTELLIGENCE_AGENTIC;
-      const efficiency = toEfficiency(baseScore, model.blendedPrice);
+    const scoredModels: ScoredModel[] = models
+      .filter(isRankableFrontierReasoningModel)
+      .map((model) => {
+        const baseScore =
+          model.coding * WEIGHT_INTELLIGENCE_CODING + model.agentic * WEIGHT_INTELLIGENCE_AGENTIC;
+        const efficiency = toEfficiency(baseScore, model.blendedPrice);
 
-      return {
-        slug: model.slug,
-        model: model.model,
-        baseScore,
-        efficiency,
-        coding: model.coding,
-        agentic: model.agentic,
-        blendedPrice: model.blendedPrice,
-      };
-    });
+        return {
+          slug: model.slug,
+          model: model.model,
+          baseScore,
+          efficiency,
+          coding: model.coding,
+          agentic: model.agentic,
+          blendedPrice: model.blendedPrice,
+        };
+      });
 
     if (scoredModels.length === 0) {
       throw new AiParseError(
@@ -113,7 +118,9 @@ export class ModelRankingService {
         100,
       );
       const scoreMultiplier =
-        WEIGHT_FINAL_INTELLIGENCE + WEIGHT_FINAL_EFFICIENCY * (relativeEfficiency / 100);
+        entry.baseScore > 0 && entry.blendedPrice > 0
+          ? 1 + EFFICIENCY_BONUS * (relativeEfficiency / 100)
+          : 1;
       const score = entry.baseScore * scoreMultiplier;
 
       return { ...entry, score };

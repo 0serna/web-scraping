@@ -3,6 +3,7 @@ import {
   createApiHelpersMocks,
   createPassthroughCacheGetOrFetchMock,
 } from "../../../shared/test-utils/service-test-helpers.js";
+import type { ArtificialAnalysisModel } from "../types/ranking.js";
 
 interface HtmlPayloadOptions {
   channel?: number;
@@ -37,14 +38,7 @@ function buildHtmlWithSeparateChunks(
   // Metadata chunk (like chunk 31 from the actual site)
   const metadataChunk = `b:${JSON.stringify({ models: metadataModels })}`;
 
-  // Build performance chunk with individual objects
-  let performanceChunkContent = "b:";
-  for (let i = 0; i < performanceModels.length; i++) {
-    performanceChunkContent += JSON.stringify(performanceModels[i]);
-    if (i < performanceModels.length - 1) {
-      performanceChunkContent += ",";
-    }
-  }
+  const performanceChunkContent = `b:${performanceModels.map((model) => JSON.stringify(model)).join(",")}`;
 
   return `<html><body>
     ${encodeChunk(metadataChunk, 1)}
@@ -55,26 +49,8 @@ function buildHtmlWithSeparateChunks(
 interface LoadOptions {
   getOrFetchImpl?: (
     key: string,
-    fetcher: () => Promise<
-      Array<{
-        model: string;
-        agentic: number | null;
-        coding: number | null;
-        blendedPrice: number | null;
-        inputPrice: number | null;
-        outputPrice: number | null;
-      }>
-    >,
-  ) => Promise<
-    Array<{
-      model: string;
-      agentic: number | null;
-      coding: number | null;
-      blendedPrice: number | null;
-      inputPrice: number | null;
-      outputPrice: number | null;
-    }>
-  >;
+    fetcher: () => Promise<ArtificialAnalysisModel[]>,
+  ) => Promise<ArtificialAnalysisModel[]>;
 }
 
 async function loadArtificialAnalysisClient(options: LoadOptions = {}) {
@@ -82,16 +58,7 @@ async function loadArtificialAnalysisClient(options: LoadOptions = {}) {
 
   const getOrFetch = options.getOrFetchImpl
     ? vi.fn(options.getOrFetchImpl)
-    : createPassthroughCacheGetOrFetchMock<
-        Array<{
-          model: string;
-          agentic: number | null;
-          coding: number | null;
-          blendedPrice: number | null;
-          inputPrice: number | null;
-          outputPrice: number | null;
-        }>
-      >();
+    : createPassthroughCacheGetOrFetchMock<ArtificialAnalysisModel[]>();
 
   const createCache = vi.fn().mockReturnValue({
     getOrFetch,
@@ -150,6 +117,7 @@ describe("ArtificialAnalysisClient", () => {
         slug: "model-a",
         model: "Model A",
         reasoningModel: true,
+        frontierModel: false,
         agentic: 75,
         coding: 62,
         blendedPrice: 0.2625,
@@ -160,6 +128,7 @@ describe("ArtificialAnalysisClient", () => {
         slug: "model-b",
         model: "Model B",
         reasoningModel: false,
+        frontierModel: false,
         agentic: 68,
         coding: null,
         blendedPrice: null,
@@ -201,8 +170,9 @@ describe("ArtificialAnalysisClient", () => {
         slug: "model-c",
         model: "Model C",
         reasoningModel: true,
-        agentic: 77,
+        frontierModel: false,
         coding: 63,
+        agentic: 77,
         blendedPrice: 1.5,
         inputPrice: null,
         outputPrice: null,
@@ -277,6 +247,7 @@ describe("ArtificialAnalysisClient", () => {
       slug: "gpt-5-4-mini",
       model: "GPT-5.4 mini (xhigh)",
       reasoningModel: true,
+      frontierModel: false,
       coding: 51.48,
       agentic: 55.66,
       blendedPrice: 1.6875,
@@ -289,6 +260,7 @@ describe("ArtificialAnalysisClient", () => {
       slug: "model-b",
       model: "Model B",
       reasoningModel: false,
+      frontierModel: false,
       coding: null,
       agentic: null,
       blendedPrice: null,
@@ -329,6 +301,7 @@ describe("ArtificialAnalysisClient", () => {
       slug: "model-new",
       model: "Model with new fields",
       reasoningModel: true,
+      frontierModel: false,
       coding: 80,
       agentic: 75,
       blendedPrice: 1.0,
@@ -340,6 +313,7 @@ describe("ArtificialAnalysisClient", () => {
       slug: "model-old",
       model: "Model with old fields",
       reasoningModel: false,
+      frontierModel: false,
       coding: 70,
       agentic: 65,
       blendedPrice: 2.0,
@@ -374,6 +348,7 @@ describe("ArtificialAnalysisClient", () => {
         slug: "model-no-perf",
         model: "Model Without Performance Data",
         reasoningModel: true,
+        frontierModel: false,
         coding: null,
         agentic: null,
         blendedPrice: null,
@@ -434,11 +409,128 @@ describe("ArtificialAnalysisClient", () => {
       slug: "gpt-5-4-mini-duplicate",
       model: "GPT-5.4 mini Duplicate",
       reasoningModel: true,
+      frontierModel: false,
       coding: 51.48,
       agentic: 55.66,
       blendedPrice: 1.6875,
       inputPrice: 0.75,
       outputPrice: 4.5,
+    });
+  });
+
+  it("parses frontier_model from models array", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+
+    const html = buildHtmlWithModels([
+      {
+        slug: "frontier-model",
+        reasoning_model: true,
+        frontier_model: true,
+        short_name: "Frontier Model",
+        agentic_index: 80,
+        coding_index: 70,
+        price_1m_blended_3_to_1: 1.0,
+      },
+      {
+        slug: "non-frontier-model",
+        reasoning_model: true,
+        frontier_model: false,
+        short_name: "Non-Frontier Model",
+        agentic_index: 75,
+        coding_index: 65,
+        price_1m_blended_3_to_1: 0.5,
+      },
+    ]);
+
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual({
+      slug: "frontier-model",
+      model: "Frontier Model",
+      reasoningModel: true,
+      frontierModel: true,
+      agentic: 80,
+      coding: 70,
+      blendedPrice: 1.0,
+      inputPrice: null,
+      outputPrice: null,
+    });
+
+    expect(result).toContainEqual({
+      slug: "non-frontier-model",
+      model: "Non-Frontier Model",
+      reasoningModel: true,
+      frontierModel: false,
+      agentic: 75,
+      coding: 65,
+      blendedPrice: 0.5,
+      inputPrice: null,
+      outputPrice: null,
+    });
+  });
+
+  it("defaults missing frontier_model to false", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+
+    const html = buildHtmlWithModels([
+      {
+        slug: "no-frontier-flag",
+        reasoning_model: true,
+        short_name: "No Frontier Flag",
+        agentic_index: 80,
+        coding_index: 70,
+        price_1m_blended_3_to_1: 1.0,
+      },
+    ]);
+
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result[0].frontierModel).toBe(false);
+  });
+
+  it("merges frontier_model from performance data into metadata by slug", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } = await loadArtificialAnalysisClient();
+
+    const metadataModels = [
+      {
+        slug: "gpt-5-4-mini",
+        name: "GPT-5.4 mini (xhigh)",
+        isReasoning: true,
+      },
+    ];
+
+    const performanceModels = [
+      {
+        slug: "gpt-5-4-mini",
+        frontier_model: true,
+        coding_index: 51.48,
+        agentic_index: 55.66,
+        price_1m_blended_3_to_1: 1.6875,
+      },
+    ];
+
+    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual({
+      slug: "gpt-5-4-mini",
+      model: "GPT-5.4 mini (xhigh)",
+      reasoningModel: true,
+      frontierModel: true,
+      coding: 51.48,
+      agentic: 55.66,
+      blendedPrice: 1.6875,
+      inputPrice: null,
+      outputPrice: null,
     });
   });
 
@@ -489,6 +581,7 @@ describe("ArtificialAnalysisClient", () => {
       slug: "model-identical",
       model: "Model Identical",
       reasoningModel: true,
+      frontierModel: false,
       coding: 60,
       agentic: 65,
       blendedPrice: null,

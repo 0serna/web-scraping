@@ -11,3 +11,4 @@ dist/
 playwright/.cache/
 *.tsbuildinfo
 coverage/
+.tinglemap.md
