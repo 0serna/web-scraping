@@ -5,9 +5,6 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
 const WEIGHT_INTELLIGENCE_CODING = 0.4;
 
-const EFFICIENCY_BONUS = 0.3;
-const RANKING_LIMIT = 15;
-
 function isRankableFrontierReasoningModel(
   model: ArtificialAnalysisModel,
 ): model is ArtificialAnalysisModel & {
@@ -32,40 +29,13 @@ function isRankableFrontierReasoningModel(
 interface ScoredModel {
   slug: string;
   model: string;
-  baseScore: number;
-  efficiency: number;
+  score: number;
   coding: number;
   agentic: number;
   blendedPrice: number;
 }
 
-function toEfficiency(baseScore: number, price: number): number {
-  if (baseScore <= 0) return 0;
-  if (price <= 0) return 0;
-  return baseScore / Math.sqrt(price);
-}
-
-function toRelativePercentValue(value: number, topValue: number): number {
-  if (!Number.isFinite(topValue)) {
-    return Number.isFinite(value) ? 0 : 100;
-  }
-
-  if (topValue === 0) {
-    return value === 0 ? 100 : 0;
-  }
-
-  return (value / topValue) * 100;
-}
-
-function toPercentile(values: number[], percentile: number): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length * percentile)];
-}
-
-function compareFinalModels(
-  left: ScoredModel & { score: number },
-  right: ScoredModel & { score: number },
-): number {
+function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   if (right.score !== left.score) return right.score - left.score;
   if (right.coding !== left.coding) return right.coding - left.coding;
   if (right.agentic !== left.agentic) return right.agentic - left.agentic;
@@ -86,15 +56,11 @@ export class ModelRankingService {
     const scoredModels: ScoredModel[] = models
       .filter(isRankableFrontierReasoningModel)
       .map((model) => {
-        const baseScore =
-          model.coding * WEIGHT_INTELLIGENCE_CODING + model.agentic * WEIGHT_INTELLIGENCE_AGENTIC;
-        const efficiency = toEfficiency(baseScore, model.blendedPrice);
-
         return {
           slug: model.slug,
           model: model.model,
-          baseScore,
-          efficiency,
+          score:
+            model.coding * WEIGHT_INTELLIGENCE_CODING + model.agentic * WEIGHT_INTELLIGENCE_AGENTIC,
           coding: model.coding,
           agentic: model.agentic,
           blendedPrice: model.blendedPrice,
@@ -107,32 +73,18 @@ export class ModelRankingService {
       );
     }
 
-    const efficiency = toPercentile(
-      scoredModels.map((m) => m.efficiency),
-      0.85,
-    );
+    const rankedModels = scoredModels.sort(compareFinalModels);
 
-    const finalScoredModels = scoredModels.map((entry) => {
-      const relativeEfficiency = Math.min(
-        toRelativePercentValue(entry.efficiency, efficiency),
-        100,
-      );
-      const scoreMultiplier =
-        entry.baseScore > 0 && entry.blendedPrice > 0
-          ? 1 + EFFICIENCY_BONUS * (relativeEfficiency / 100)
-          : 1;
-      const score = entry.baseScore * scoreMultiplier;
+    if (rankedModels[0].score <= 0) {
+      throw new AiParseError("First-ranked model has a non-positive internal score");
+    }
 
-      return { ...entry, score };
-    });
-
-    const rankedModels = finalScoredModels.sort(compareFinalModels).slice(0, RANKING_LIMIT);
+    const topInternalScore = rankedModels[0].score;
 
     return rankedModels.map((entry, index) => ({
       model: entry.model,
       position: index + 1,
-      score: Number(entry.score.toFixed(2)),
-      price1m: Math.round(entry.blendedPrice * 100) / 100,
+      score: Number(((entry.score / topInternalScore) * 100).toFixed(2)),
     }));
   }
 }

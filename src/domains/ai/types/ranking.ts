@@ -14,7 +14,6 @@ export interface RankedModel {
   model: string;
   position: number;
   score: number;
-  price1m: number;
 }
 
 export interface RawArtificialAnalysisModel {

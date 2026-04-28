@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ModelRankingService } from "./model-ranking-service.js";
 
 describe("ModelRankingService", () => {
-  it("filters models without required fields and ranks by value", async () => {
+  it("filters models without required fields and ranks by base score", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -47,14 +47,12 @@ describe("ModelRankingService", () => {
       {
         model: "Model B",
         position: 1,
-        score: 83.2,
-        price1m: 0.38,
+        score: 100,
       },
       {
         model: "Model A",
         position: 2,
-        score: 61.72,
-        price1m: 0.38,
+        score: 78.13,
       },
     ]);
   });
@@ -94,7 +92,7 @@ describe("ModelRankingService", () => {
     });
   });
 
-  it("keeps rows with different slugs and returns value-ranked output", async () => {
+  it("keeps rows with duplicate model names and returns relative scores", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -139,25 +137,22 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         position: 1,
-        score: 86.24,
-        price1m: 0.25,
-      },
-      {
-        model: "Model B",
-        position: 2,
-        score: 83.2,
-        price1m: 0.13,
+        score: 100,
       },
       {
         model: "Model A",
+        position: 2,
+        score: 100,
+      },
+      {
+        model: "Model B",
         position: 3,
-        score: 79.38,
-        price1m: 0.75,
+        score: 91.43,
       },
     ]);
   });
 
-  it("uses tie-breakers during deduplication", async () => {
+  it("uses tie-breakers for stable ordering", async () => {
     const tiedRows = [
       {
         slug: "model-x-cheap",
@@ -211,20 +206,18 @@ describe("ModelRankingService", () => {
 
     expect(modelXA).toEqual({
       model: "Model X",
-      position: 1,
-      score: 96.2,
-      price1m: 0.13,
+      position: 2,
+      score: 98.67,
     });
     expect(modelXB).toEqual({
       model: "Model X",
-      position: 1,
-      score: 96.2,
-      price1m: 0.13,
+      position: 2,
+      score: 98.67,
     });
     expect(rankingA).toEqual(rankingB);
   });
 
-  it("returns base score in output", async () => {
+  it("returns 100 for the top-ranked model", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -247,13 +240,12 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         position: 1,
-        score: 83.53,
-        price1m: 0.26,
+        score: 100,
       },
     ]);
   });
 
-  it("limits ranking response to top 15 models", async () => {
+  it("returns all ranked models", async () => {
     const models = Array.from({ length: 30 }, (_, index) => {
       const rank = index + 1;
       return {
@@ -276,18 +268,16 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expect(ranking).toHaveLength(15);
+    expect(ranking).toHaveLength(30);
     expect(ranking[0]).toMatchObject({
       model: "Model 1",
       position: 1,
-      score: 130,
-      price1m: 0.5,
+      score: 100,
     });
-    expect(ranking[14]).toMatchObject({
-      model: "Model 15",
-      position: 15,
-      score: 109.11,
-      price1m: 0.5,
+    expect(ranking[29]).toMatchObject({
+      model: "Model 30",
+      position: 30,
+      score: 71,
     });
   });
 
@@ -310,8 +300,8 @@ describe("ModelRankingService", () => {
           model: "Model B",
           reasoningModel: true,
           frontierModel: true,
-          agentic: 0,
-          coding: 0,
+          agentic: 10,
+          coding: 10,
           blendedPrice: 0.2625,
           inputPrice: 0.15,
           outputPrice: 0.6,
@@ -325,13 +315,12 @@ describe("ModelRankingService", () => {
       {
         model: "Model B",
         position: 1,
-        score: 0,
-        price1m: 0.26,
+        score: 100,
       },
     ]);
   });
 
-  it("keeps negative weighted scores when present", async () => {
+  it("throws when first-ranked model has non-positive internal score", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -361,14 +350,9 @@ describe("ModelRankingService", () => {
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
 
-    await expect(service.getRanking()).resolves.toEqual([
-      {
-        model: "Model B",
-        position: 1,
-        score: -10,
-        price1m: 0.25,
-      },
-    ]);
+    await expect(service.getRanking()).rejects.toMatchObject({
+      name: "AiParseError",
+    });
   });
 
   it("sorts by unrounded score before relative rounding", async () => {
@@ -390,8 +374,8 @@ describe("ModelRankingService", () => {
           model: "Model B",
           reasoningModel: true,
           frontierModel: true,
-          agentic: 86,
-          coding: 86,
+          agentic: 85.99,
+          coding: 85.99,
           blendedPrice: 0.2,
           inputPrice: null,
           outputPrice: null,
@@ -405,14 +389,12 @@ describe("ModelRankingService", () => {
     expect(ranking[0]).toMatchObject({
       model: "Model A",
       position: 1,
-      score: 111.81,
-      price1m: 0.13,
+      score: 100,
     });
     expect(ranking[1]).toMatchObject({
       model: "Model B",
       position: 2,
-      score: 106.4,
-      price1m: 0.2,
+      score: 99.98,
     });
   });
 
@@ -450,8 +432,7 @@ describe("ModelRankingService", () => {
       {
         model: "Frontier Model",
         position: 1,
-        score: 98.8,
-        price1m: 0.5,
+        score: 100,
       },
     ]);
   });
@@ -490,13 +471,12 @@ describe("ModelRankingService", () => {
       {
         model: "Frontier Reasoning",
         position: 1,
-        score: 98.8,
-        price1m: 0.5,
+        score: 100,
       },
     ]);
   });
 
-  it("applies frontier filtering before efficiency percentile and final score calculation", async () => {
+  it("applies frontier filtering before final score calculation", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -538,34 +518,22 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    // If frontier filtering happened AFTER scoring, the non-frontier-cheap model
-    // would lower the efficiency percentile and change the scores.
-    // With frontier filtering BEFORE scoring, only frontier models are in the universe.
-    // frontier-cheap: baseScore = 50, efficiency = 50 / sqrt(0.1) = 158.11
-    // frontier-expensive: baseScore = 80, efficiency = 80 / sqrt(10) = 25.30
-    // 85th percentile efficiency = 158.11
-    // frontier-cheap relative efficiency = 100
-    //   score = 50 * (1 + 0.3 * 1.0) = 65.00
-    // frontier-expensive relative efficiency = 25.30 / 158.11 * 100 = 16.00
-    //   score = 80 * (1 + 0.3 * 0.16) = 83.84
     expect(ranking).toHaveLength(2);
     expect(ranking).toEqual([
       {
         model: "Frontier Expensive",
         position: 1,
-        score: 83.84,
-        price1m: 10.0,
+        score: 100,
       },
       {
         model: "Frontier Cheap",
         position: 2,
-        score: 65,
-        price1m: 0.1,
+        score: 62.5,
       },
     ]);
   });
 
-  it("keeps zero-price models without efficiency bonus", async () => {
+  it("keeps zero-price models in the base score ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -597,16 +565,14 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       {
-        model: "Model B",
+        model: "Model A",
         position: 1,
-        score: 117,
-        price1m: 0.63,
+        score: 100,
       },
       {
-        model: "Model A",
+        model: "Model B",
         position: 2,
-        score: 100,
-        price1m: 0,
+        score: 90,
       },
     ]);
   });
