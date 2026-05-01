@@ -1,10 +1,4 @@
-# ai-model-ranking Specification
-
-## Purpose
-
-Fetch and rank frontier AI models from Artificial Analysis performance data, returning a relative score for each eligible model.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rank explicit frontier models with coding and agentic scores
 

@@ -50,6 +50,11 @@ function buildHtmlWithSeparateChunks(
   </body></html>`;
 }
 
+function buildHtmlWithEmbeddedPerformanceModels(models: unknown[]): string {
+  const embeddedPayload = JSON.stringify({ models }).replace(/"/g, '\\"');
+  return `<html><body><script>${embeddedPayload}</script></body></html>`;
+}
+
 async function loadArtificialAnalysisClient(
   getOrFetchValidatedImpl?: (
     key: string,
@@ -181,6 +186,55 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
       },
     ]);
+  });
+
+  it("parses frontier models from embedded detail-page performance data", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
+
+    const html = buildHtmlWithEmbeddedPerformanceModels([
+      {
+        slug: "gpt-5-5",
+        short_name: "GPT-5.5 (xhigh)",
+        frontier_model: true,
+        agentic_index: 74.12,
+        coding_index: 59.12,
+      },
+      {
+        slug: "gpt-5-5-medium",
+        short_name: "GPT-5.5 (medium)",
+        frontier_model: true,
+        agentic_index: 69.39,
+        coding_index: 56.21,
+      },
+    ]);
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual({
+      slug: "gpt-5-5-medium",
+      model: "GPT-5.5 (medium)",
+      reasoningModel: false,
+      frontierModel: true,
+      agentic: 69.39,
+      coding: 56.21,
+      blendedPrice: null,
+      inputPrice: null,
+      outputPrice: null,
+    });
+    expect(result).toContainEqual({
+      slug: "gpt-5-5",
+      model: "GPT-5.5 (xhigh)",
+      reasoningModel: false,
+      frontierModel: true,
+      agentic: 74.12,
+      coding: 59.12,
+      blendedPrice: null,
+      inputPrice: null,
+      outputPrice: null,
+    });
   });
 
   it("throws AiFetchError when page request fails", async () => {
@@ -699,6 +753,194 @@ describe("ArtificialAnalysisClient", () => {
 
     await expect(client.getModels()).rejects.toThrow(
       "Fresh value failed validation for key: ai:models",
+    );
+  });
+
+  it("accepts cached non-reasoning frontier model with coding and agentic", async () => {
+    const cachedModels: ArtificialAnalysisModel[] = [
+      {
+        slug: "non-reasoning-frontier",
+        model: "Non-Reasoning Frontier",
+        reasoningModel: false,
+        frontierModel: true,
+        agentic: 80,
+        coding: 70,
+        blendedPrice: null,
+        inputPrice: null,
+        outputPrice: null,
+      },
+    ];
+
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+        if (validator(cachedModels)) return cachedModels;
+        return fetcher();
+      });
+
+    const html = buildHtmlWithModels([
+      {
+        slug: "should-not-be-fetched",
+        reasoning_model: false,
+        frontier_model: true,
+        short_name: "Should Not Be Fetched",
+        agentic_index: 80,
+        coding_index: 70,
+      },
+    ]);
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toEqual(cachedModels);
+  });
+
+  it("rejects cached frontier model without coding score", async () => {
+    const staleModels: ArtificialAnalysisModel[] = [
+      {
+        slug: "no-coding",
+        model: "No Coding",
+        reasoningModel: true,
+        frontierModel: true,
+        agentic: 80,
+        coding: null,
+        blendedPrice: null,
+        inputPrice: null,
+        outputPrice: null,
+      },
+    ];
+
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+        if (validator(staleModels)) return staleModels;
+        const freshHtml = buildHtmlWithModels([
+          {
+            slug: "fresh-frontier",
+            reasoning_model: true,
+            frontier_model: true,
+            short_name: "Fresh Frontier",
+            agentic_index: 80,
+            coding_index: 70,
+            price_1m_blended_3_to_1: 1.0,
+          },
+        ]);
+        fetchWithTimeout.mockResolvedValue(
+          new Response(freshHtml, { status: 200 }),
+        );
+        return fetcher();
+      });
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual(
+      expect.objectContaining({ slug: "fresh-frontier", frontierModel: true }),
+    );
+  });
+
+  it("fills scores from embedded performance data into metadata models by slug", async () => {
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
+
+    const metadataModels = [
+      {
+        slug: "gpt-5-5-medium",
+        name: "GPT-5.5 (medium)",
+        isReasoning: false,
+      },
+      {
+        slug: "gpt-5-5",
+        name: "GPT-5.5 (xhigh)",
+        isReasoning: true,
+      },
+    ];
+
+    const html = buildHtmlWithSeparateChunks(metadataModels, []);
+    const embeddedPayload = JSON.stringify({
+      models: [
+        {
+          slug: "gpt-5-5-medium",
+          short_name: "GPT-5.5 (medium)",
+          frontier_model: true,
+          coding_index: 56.21,
+          agentic_index: 69.39,
+        },
+        {
+          slug: "gpt-5-5",
+          short_name: "GPT-5.5 (xhigh)",
+          frontier_model: true,
+          coding_index: 59.12,
+          agentic_index: 74.12,
+        },
+      ],
+    }).replace(/"/g, '\\"');
+    const htmlWithEmbedded = html.replace(
+      "</body>",
+      `<script>${embeddedPayload}</script></body>`,
+    );
+    fetchWithTimeout.mockResolvedValue(
+      new Response(htmlWithEmbedded, { status: 200 }),
+    );
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual({
+      slug: "gpt-5-5-medium",
+      model: "GPT-5.5 (medium)",
+      reasoningModel: false,
+      frontierModel: true,
+      agentic: 69.39,
+      coding: 56.21,
+      blendedPrice: null,
+      inputPrice: null,
+      outputPrice: null,
+    });
+    expect(result).toContainEqual({
+      slug: "gpt-5-5",
+      model: "GPT-5.5 (xhigh)",
+      reasoningModel: true,
+      frontierModel: true,
+      agentic: 74.12,
+      coding: 59.12,
+      blendedPrice: null,
+      inputPrice: null,
+      outputPrice: null,
+    });
+  });
+
+  it("treats missing frontier_model as not frontier after merge", async () => {
+    const performanceData = [
+      {
+        slug: "no-frontier-flag",
+        coding_index: 60,
+        agentic_index: 65,
+      },
+    ];
+
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient();
+
+    const html = buildHtmlWithSeparateChunks(
+      [
+        {
+          slug: "no-frontier-flag",
+          short_name: "No Frontier Flag",
+          reasoning_model: true,
+        },
+      ],
+      performanceData,
+    );
+    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+    const result = await client.getModels();
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "no-frontier-flag",
+        frontierModel: false,
+      }),
     );
   });
 });

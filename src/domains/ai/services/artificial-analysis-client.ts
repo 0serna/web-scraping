@@ -12,7 +12,7 @@ import {
   type RawArtificialAnalysisModel,
 } from "../types/ranking.js";
 
-const ARTIFICIAL_ANALYSIS_URL = "https://artificialanalysis.ai/";
+const ARTIFICIAL_ANALYSIS_URL = "https://artificialanalysis.ai/models/gpt-5-5";
 const ARTIFICIAL_ANALYSIS_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const ARTIFICIAL_ANALYSIS_CACHE_KEY = "ai:models";
 const NEXT_FLIGHT_CHUNK_PATTERN =
@@ -37,11 +37,9 @@ function hasRankableFrontierModel(models: ArtificialAnalysisModel[]): boolean {
   return models.some(
     (m) =>
       m.slug.length > 0 &&
-      m.reasoningModel &&
       m.frontierModel &&
       isFiniteNumber(m.coding) &&
-      isFiniteNumber(m.agentic) &&
-      isFiniteNumber(m.blendedPrice),
+      isFiniteNumber(m.agentic),
   );
 }
 
@@ -238,6 +236,55 @@ function extractPerformanceDataFromChunk(
   return models;
 }
 
+function extractModelsFromPerformanceObjects(
+  source: string,
+): ArtificialAnalysisModel[] {
+  const models: ArtificialAnalysisModel[] = [];
+  const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
+
+  let match: RegExpExecArray | null;
+  while ((match = performanceRegex.exec(source)) !== null) {
+    const objectStartIndex = findObjectStart(source, match.index);
+    const objectText = extractJsonObjectText(source, objectStartIndex);
+    if (!objectText) continue;
+
+    try {
+      const parsed = JSON.parse(objectText) as unknown;
+      if (typeof parsed !== "object" || parsed === null) continue;
+
+      const entry = normalizeModel(parsed as RawArtificialAnalysisModel);
+      if (entry) models.push(entry);
+    } catch {
+      // Ignore malformed objects and continue scanning.
+    }
+  }
+
+  return models;
+}
+
+function extractEmbeddedPerformanceModelsFromHtml(
+  html: string,
+): ArtificialAnalysisModel[] {
+  const unescapedHtml = html.replace(/\\"/g, '"');
+  return extractModelsFromPerformanceObjects(unescapedHtml);
+}
+
+function uniqueModelsBySlug(
+  models: ArtificialAnalysisModel[],
+): ArtificialAnalysisModel[] {
+  const seenSlugs = new Set<string>();
+  const uniqueModels: ArtificialAnalysisModel[] = [];
+
+  for (const model of models) {
+    if (!seenSlugs.has(model.slug)) {
+      seenSlugs.add(model.slug);
+      uniqueModels.push(model);
+    }
+  }
+
+  return uniqueModels;
+}
+
 function mergeModelData(
   metadataModels: ArtificialAnalysisModel[],
   performanceData: PerformanceData[],
@@ -266,42 +313,71 @@ function mergeModelData(
   });
 }
 
+function mergeEmbeddedIntoModels(
+  models: ArtificialAnalysisModel[],
+  embedded: ArtificialAnalysisModel[],
+): ArtificialAnalysisModel[] {
+  const embeddedBySlug = new Map(embedded.map((m) => [m.slug, m]));
+
+  const merged = models.map((model) => {
+    const source = embeddedBySlug.get(model.slug);
+    if (!source) return model;
+    return {
+      ...model,
+      frontierModel: source.frontierModel ?? model.frontierModel,
+      coding: source.coding ?? model.coding,
+      agentic: source.agentic ?? model.agentic,
+      blendedPrice: source.blendedPrice ?? model.blendedPrice,
+      inputPrice: source.inputPrice ?? model.inputPrice,
+      outputPrice: source.outputPrice ?? model.outputPrice,
+    };
+  });
+
+  const knownSlugs = new Set(merged.map((m) => m.slug));
+  for (const model of embedded) {
+    if (!knownSlugs.has(model.slug)) {
+      merged.push(model);
+    }
+  }
+
+  return merged;
+}
+
 function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
+  const embeddedPerformanceModels = uniqueModelsBySlug(
+    extractEmbeddedPerformanceModelsFromHtml(html),
+  );
   const payloadChunks = extractNextFlightPayloadChunks(html);
   if (payloadChunks.length === 0) {
+    if (embeddedPerformanceModels.length > 0) {
+      return embeddedPerformanceModels;
+    }
+
     throw new AiParseError("Unable to locate Next.js flight payload");
   }
 
-  // Collect all metadata models (from "models" arrays) and performance data separately
   const metadataModels: ArtificialAnalysisModel[] = [];
   const performanceData: PerformanceData[] = [];
 
   for (const chunk of payloadChunks) {
-    const chunkMetadata = extractModelsFromModelsArray(chunk);
-    const chunkPerformance = extractPerformanceDataFromChunk(chunk);
-
-    metadataModels.push(...chunkMetadata);
-    performanceData.push(...chunkPerformance);
+    metadataModels.push(...extractModelsFromModelsArray(chunk));
+    performanceData.push(...extractPerformanceDataFromChunk(chunk));
   }
 
-  const seenSlugs = new Set<string>();
-  const uniqueMetadataModels: ArtificialAnalysisModel[] = [];
-  for (const model of metadataModels) {
-    if (!seenSlugs.has(model.slug)) {
-      seenSlugs.add(model.slug);
-      uniqueMetadataModels.push(model);
-    }
-  }
+  const uniqueMetadataModels = uniqueModelsBySlug(metadataModels);
 
-  // If we have both metadata and performance data, merge them
   let finalModels: ArtificialAnalysisModel[];
   if (uniqueMetadataModels.length > 0 && performanceData.length > 0) {
     finalModels = mergeModelData(uniqueMetadataModels, performanceData);
   } else if (uniqueMetadataModels.length > 0) {
     finalModels = uniqueMetadataModels;
+  } else if (embeddedPerformanceModels.length > 0) {
+    finalModels = embeddedPerformanceModels;
   } else {
     throw new AiParseError("Unable to locate models data in payload");
   }
+
+  finalModels = mergeEmbeddedIntoModels(finalModels, embeddedPerformanceModels);
 
   if (finalModels.length === 0) {
     throw new AiParseError("Models data is empty");

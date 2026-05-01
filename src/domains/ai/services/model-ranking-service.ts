@@ -5,42 +5,33 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
 const WEIGHT_INTELLIGENCE_CODING = 0.4;
 
-function isRankableFrontierReasoningModel(
+function isRankableFrontierModel(
   model: ArtificialAnalysisModel,
 ): model is ArtificialAnalysisModel & {
   slug: string;
-  reasoningModel: true;
   frontierModel: true;
   coding: number;
   agentic: number;
-  blendedPrice: number;
 } {
   return (
     model.slug.length > 0 &&
-    model.reasoningModel === true &&
     model.frontierModel === true &&
     model.coding !== null &&
-    model.agentic !== null &&
-    model.blendedPrice !== null &&
-    model.blendedPrice >= 0
+    model.agentic !== null
   );
 }
 
 interface ScoredModel {
-  slug: string;
   model: string;
   score: number;
   coding: number;
   agentic: number;
-  blendedPrice: number;
 }
 
 function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   if (right.score !== left.score) return right.score - left.score;
-  if (right.coding !== left.coding) return right.coding - left.coding;
   if (right.agentic !== left.agentic) return right.agentic - left.agentic;
-  if (left.blendedPrice !== right.blendedPrice)
-    return left.blendedPrice - right.blendedPrice;
+  if (right.coding !== left.coding) return right.coding - left.coding;
   return left.model.localeCompare(right.model);
 }
 
@@ -57,23 +48,21 @@ export class ModelRankingService {
     const models = await this.artificialAnalysisClient.getModels();
 
     const scoredModels: ScoredModel[] = models
-      .filter(isRankableFrontierReasoningModel)
+      .filter(isRankableFrontierModel)
       .map((model) => {
         return {
-          slug: model.slug,
           model: model.model,
           score:
             model.coding * WEIGHT_INTELLIGENCE_CODING +
             model.agentic * WEIGHT_INTELLIGENCE_AGENTIC,
           coding: model.coding,
           agentic: model.agentic,
-          blendedPrice: model.blendedPrice,
         };
       });
 
     if (scoredModels.length === 0) {
       throw new AiParseError(
-        "No reasoning models with slug, coding, agentic, and blended price were found",
+        "No frontier models with slug, coding, and agentic scores were found",
       );
     }
 
