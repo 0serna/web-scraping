@@ -7,7 +7,7 @@
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
     "format": "prettier --write .",
-    "check": "prettier --check . && eslint . && tsc --noEmit",
+    "check": "prettier --check . && eslint . && fallow --fail-on-issues && openspec validate --all --json && tsc --noEmit",
     "test": "vitest run",
     "prepare": "husky"
   },
@@ -25,6 +25,7 @@
     "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
+    "fallow": "^2.57.0",
     "prettier": "^3.8.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
@@ -35,12 +36,11 @@
     "node": ">=22.0.0"
   },
   "lint-staged": {
-    "*.{ts,js,json,md}": [
-      "prettier --write"
+    "*": [
+      "prettier --write --ignore-unknown"
     ],
     "*.ts": [
-      "eslint --fix",
-      "bash -c 'tsc --noEmit'"
+      "eslint --fix"
     ]
   }
 }
