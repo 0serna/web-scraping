@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createApiHelpersMocks,
-  createPassthroughCacheGetOrFetchValidatedMock,
-} from "../../../shared/test-utils/service-test-helpers.js";
+import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
 import type { ArtificialAnalysisModel } from "../types/ranking.js";
 
 interface HtmlPayloadOptions {
@@ -53,36 +50,26 @@ function buildHtmlWithSeparateChunks(
   </body></html>`;
 }
 
-interface LoadOptions {
+async function loadArtificialAnalysisClient(
   getOrFetchValidatedImpl?: (
     key: string,
     fetcher: () => Promise<ArtificialAnalysisModel[]>,
     validator: (value: ArtificialAnalysisModel[]) => boolean,
-  ) => Promise<ArtificialAnalysisModel[]>;
-}
-
-async function loadArtificialAnalysisClient(options: LoadOptions = {}) {
+  ) => Promise<ArtificialAnalysisModel[]>,
+) {
   vi.resetModules();
 
-  const getOrFetchValidated = options.getOrFetchValidatedImpl
-    ? vi.fn(options.getOrFetchValidatedImpl)
-    : createPassthroughCacheGetOrFetchValidatedMock<
-        ArtificialAnalysisModel[]
-      >();
-
-  const createCache = vi.fn().mockReturnValue({
-    getOrFetchValidated,
-  });
-
-  const { fetchWithTimeout, buildFetchHeaders } = createApiHelpersMocks();
+  const mocks = createServiceModuleMocks<ArtificialAnalysisModel[]>(
+    getOrFetchValidatedImpl,
+  );
 
   vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache,
+    createCache: mocks.createCache,
   }));
 
   vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout,
-    buildFetchHeaders,
+    fetchWithTimeout: mocks.fetchWithTimeout,
+    buildFetchHeaders: mocks.buildFetchHeaders,
   }));
 
   const { ArtificialAnalysisClient } =
@@ -90,8 +77,8 @@ async function loadArtificialAnalysisClient(options: LoadOptions = {}) {
 
   return {
     ArtificialAnalysisClient,
-    getOrFetchValidated,
-    fetchWithTimeout,
+    getOrFetchValidated: mocks.getOrFetchValidated,
+    fetchWithTimeout: mocks.fetchWithTimeout,
   };
 }
 
@@ -635,15 +622,13 @@ describe("ArtificialAnalysisClient", () => {
 
     let fetchCount = 0;
     const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient({
-        getOrFetchValidatedImpl: async (_key, fetcher, validator) => {
-          if (fetchCount === 0) {
-            fetchCount++;
-            if (validator(staleModels)) return staleModels;
-            return fetcher();
-          }
+      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+        if (fetchCount === 0) {
+          fetchCount++;
+          if (validator(staleModels)) return staleModels;
           return fetcher();
-        },
+        }
+        return fetcher();
       });
 
     const freshHtml = buildHtmlWithModels([
@@ -685,33 +670,29 @@ describe("ArtificialAnalysisClient", () => {
     ];
 
     const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient({
-        getOrFetchValidatedImpl: async (_key, fetcher, validator) => {
-          if (!validator(staleModels)) {
-            const freshHtml = buildHtmlWithModels([
-              {
-                slug: "fresh-no-frontier",
-                reasoning_model: true,
-                frontier_model: false,
-                short_name: "Fresh No Frontier",
-                agentic_index: 80,
-                coding_index: 70,
-                price_1m_blended_3_to_1: 1.0,
-              },
-            ]);
-            fetchWithTimeout.mockResolvedValue(
-              new Response(freshHtml, { status: 200 }),
-            );
-            const freshResult = await fetcher();
-            if (!validator(freshResult)) {
-              throw new Error(
-                "Fresh value failed validation for key: ai:models",
-              );
-            }
-            return freshResult;
+      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+        if (!validator(staleModels)) {
+          const freshHtml = buildHtmlWithModels([
+            {
+              slug: "fresh-no-frontier",
+              reasoning_model: true,
+              frontier_model: false,
+              short_name: "Fresh No Frontier",
+              agentic_index: 80,
+              coding_index: 70,
+              price_1m_blended_3_to_1: 1.0,
+            },
+          ]);
+          fetchWithTimeout.mockResolvedValue(
+            new Response(freshHtml, { status: 200 }),
+          );
+          const freshResult = await fetcher();
+          if (!validator(freshResult)) {
+            throw new Error("Fresh value failed validation for key: ai:models");
           }
-          return staleModels;
-        },
+          return freshResult;
+        }
+        return staleModels;
       });
 
     const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);

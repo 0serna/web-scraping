@@ -1,0 +1,8 @@
+{
+  "usedClassMembers": [
+    "getModels",
+    "getPriceByTicker",
+    "getGameInfoByAppId",
+    { "implements": "Cache", "members": ["getOrFetch"] }
+  ]
+}

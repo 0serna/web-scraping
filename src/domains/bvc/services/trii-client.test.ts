@@ -1,45 +1,34 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createApiHelpersMocks,
-  createPassthroughCacheGetOrFetchValidatedMock,
-} from "../../../shared/test-utils/service-test-helpers.js";
+import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
 
-interface LoadOptions {
+async function loadTriiClient(
   getOrFetchValidatedImpl?: (
     key: string,
     fetcher: () => Promise<Record<string, number>>,
     validator: (value: Record<string, number>) => boolean,
-  ) => Promise<Record<string, number>>;
-}
-
-async function loadTriiClient(options: LoadOptions = {}) {
+  ) => Promise<Record<string, number>>,
+) {
   vi.resetModules();
 
-  const getOrFetchValidated = options.getOrFetchValidatedImpl
-    ? vi.fn(options.getOrFetchValidatedImpl)
-    : createPassthroughCacheGetOrFetchValidatedMock<Record<string, number>>();
-
-  const createCache = vi.fn().mockReturnValue({
-    getOrFetchValidated,
-  });
-
-  const { fetchWithTimeout, buildFetchHeaders } = createApiHelpersMocks();
+  const mocks = createServiceModuleMocks<Record<string, number>>(
+    getOrFetchValidatedImpl,
+  );
 
   vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache,
+    createCache: mocks.createCache,
   }));
 
   vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout,
-    buildFetchHeaders,
+    fetchWithTimeout: mocks.fetchWithTimeout,
+    buildFetchHeaders: mocks.buildFetchHeaders,
   }));
 
   const { TriiClient } = await import("./trii-client.js");
 
   return {
     TriiClient,
-    getOrFetchValidated,
-    fetchWithTimeout,
+    getOrFetchValidated: mocks.getOrFetchValidated,
+    fetchWithTimeout: mocks.fetchWithTimeout,
   };
 }
 
@@ -117,8 +106,8 @@ describe("TriiClient", () => {
   it("refetches when cached price map has no finite prices", async () => {
     const staleMap = { ecopetrol: Number.NaN };
 
-    const { TriiClient, fetchWithTimeout } = await loadTriiClient({
-      getOrFetchValidatedImpl: async (_key, fetcher, validator) => {
+    const { TriiClient, fetchWithTimeout } = await loadTriiClient(
+      async (_key, fetcher, validator) => {
         if (!validator(staleMap)) {
           fetchWithTimeout.mockResolvedValue(
             new Response('<h3>ecopetrol</h3><div class="title">$ 1,500</div>', {
@@ -129,7 +118,7 @@ describe("TriiClient", () => {
         }
         return staleMap;
       },
-    });
+    );
 
     const client = new TriiClient({ child: vi.fn() } as never);
 

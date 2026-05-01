@@ -24,6 +24,15 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+type CharState = { inString: boolean; escaped: boolean };
+
+function updateStringState(char: string, state: CharState): CharState {
+  if (state.escaped) return { inString: state.inString, escaped: false };
+  if (char === "\\") return { inString: state.inString, escaped: true };
+  if (char === '"') return { inString: false, escaped: false };
+  return state;
+}
+
 function hasRankableFrontierModel(models: ArtificialAnalysisModel[]): boolean {
   return models.some(
     (m) =>
@@ -43,32 +52,18 @@ function extractBalancedJsonText(
   closeChar: "]" | "}",
 ): string | null {
   let depth = 0;
-  let inString = false;
-  let escaped = false;
+  let state: CharState = { inString: false, escaped: false };
 
   for (let index = startIndex; index < source.length; index++) {
     const char = source[index];
 
-    if (inString) {
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-
-      if (char === "\\") {
-        escaped = true;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = false;
-      }
-
+    if (state.inString) {
+      state = updateStringState(char, state);
       continue;
     }
 
     if (char === '"') {
-      inString = true;
+      state = { inString: true, escaped: false };
       continue;
     }
 
@@ -119,35 +114,35 @@ function extractNextFlightPayloadChunks(html: string): string[] {
   return chunks;
 }
 
+function resolveModelName(rawModel: RawArtificialAnalysisModel): string | null {
+  const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
+  return name && name.trim().length > 0 ? name.trim() : null;
+}
+
+function resolveNumericField(value: unknown): number | null {
+  return isFiniteNumber(value) ? value : null;
+}
+
 function normalizeModel(
   rawModel: RawArtificialAnalysisModel,
 ): ArtificialAnalysisModel | null {
-  const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
-  if (!name || name.trim().length === 0) return null;
+  const model = resolveModelName(rawModel);
+  if (!model) return null;
+
   const slug = typeof rawModel.slug === "string" ? rawModel.slug.trim() : "";
   if (slug.length === 0) return null;
 
   return {
     slug,
-    model: name.trim(),
+    model,
     reasoningModel:
       rawModel.reasoning_model === true || rawModel.isReasoning === true,
     frontierModel: rawModel.frontier_model === true,
-    agentic: isFiniteNumber(rawModel.agentic_index)
-      ? rawModel.agentic_index
-      : null,
-    coding: isFiniteNumber(rawModel.coding_index)
-      ? rawModel.coding_index
-      : null,
-    blendedPrice: isFiniteNumber(rawModel.price_1m_blended_3_to_1)
-      ? rawModel.price_1m_blended_3_to_1
-      : null,
-    inputPrice: isFiniteNumber(rawModel.price_1m_input_tokens)
-      ? rawModel.price_1m_input_tokens
-      : null,
-    outputPrice: isFiniteNumber(rawModel.price_1m_output_tokens)
-      ? rawModel.price_1m_output_tokens
-      : null,
+    agentic: resolveNumericField(rawModel.agentic_index),
+    coding: resolveNumericField(rawModel.coding_index),
+    blendedPrice: resolveNumericField(rawModel.price_1m_blended_3_to_1),
+    inputPrice: resolveNumericField(rawModel.price_1m_input_tokens),
+    outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
   };
 }
 
@@ -188,6 +183,35 @@ function extractModelsFromModelsArray(
   return models;
 }
 
+function findObjectStart(source: string, fromIndex: number): number {
+  let braceCount = 0;
+  for (let i = fromIndex; i >= 0; i--) {
+    if (source[i] === "}") braceCount++;
+    if (source[i] === "{") {
+      if (braceCount === 0) return i;
+      braceCount--;
+    }
+  }
+  return fromIndex;
+}
+
+function toPerformanceData(
+  raw: RawArtificialAnalysisModel,
+): PerformanceData | null {
+  const slug = typeof raw.slug === "string" ? raw.slug.trim() : "";
+  if (slug.length === 0) return null;
+
+  return {
+    slug,
+    frontierModel: raw.frontier_model === true,
+    coding: resolveNumericField(raw.coding_index),
+    agentic: resolveNumericField(raw.agentic_index),
+    blendedPrice: resolveNumericField(raw.price_1m_blended_3_to_1),
+    inputPrice: resolveNumericField(raw.price_1m_input_tokens),
+    outputPrice: resolveNumericField(raw.price_1m_output_tokens),
+  };
+}
+
 function extractPerformanceDataFromChunk(
   decodedChunk: string,
 ): PerformanceData[] {
@@ -196,50 +220,16 @@ function extractPerformanceDataFromChunk(
 
   let match: RegExpExecArray | null;
   while ((match = performanceRegex.exec(decodedChunk)) !== null) {
-    // Find the start of the containing object by backtracking to find the opening brace
-    let objectStartIndex = match.index;
-    let braceCount = 0;
-    for (let i = match.index; i >= 0; i--) {
-      if (decodedChunk[i] === "}") braceCount++;
-      if (decodedChunk[i] === "{") {
-        if (braceCount === 0) {
-          objectStartIndex = i;
-          break;
-        }
-        braceCount--;
-      }
-    }
-
+    const objectStartIndex = findObjectStart(decodedChunk, match.index);
     const objectText = extractJsonObjectText(decodedChunk, objectStartIndex);
-    if (!objectText) {
-      continue;
-    }
+    if (!objectText) continue;
 
     try {
       const parsed = JSON.parse(objectText) as unknown;
-      if (typeof parsed !== "object" || parsed === null) {
-        continue;
-      }
+      if (typeof parsed !== "object" || parsed === null) continue;
 
-      const raw = parsed as RawArtificialAnalysisModel;
-      const slug = typeof raw.slug === "string" ? raw.slug.trim() : "";
-      if (slug.length === 0) continue;
-
-      models.push({
-        slug,
-        frontierModel: raw.frontier_model === true,
-        coding: isFiniteNumber(raw.coding_index) ? raw.coding_index : null,
-        agentic: isFiniteNumber(raw.agentic_index) ? raw.agentic_index : null,
-        blendedPrice: isFiniteNumber(raw.price_1m_blended_3_to_1)
-          ? raw.price_1m_blended_3_to_1
-          : null,
-        inputPrice: isFiniteNumber(raw.price_1m_input_tokens)
-          ? raw.price_1m_input_tokens
-          : null,
-        outputPrice: isFiniteNumber(raw.price_1m_output_tokens)
-          ? raw.price_1m_output_tokens
-          : null,
-      });
+      const entry = toPerformanceData(parsed as RawArtificialAnalysisModel);
+      if (entry) models.push(entry);
     } catch {
       // Ignore malformed objects and continue scanning.
     }

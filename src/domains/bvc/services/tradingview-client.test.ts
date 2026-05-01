@@ -1,47 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  createApiHelpersMocks,
-  createPassthroughCacheGetOrFetchValidatedMock,
-} from "../../../shared/test-utils/service-test-helpers.js";
+import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
 
-interface LoadOptions {
+async function loadTradingViewClient(
   getOrFetchValidatedImpl?: (
     key: string,
     fetcher: () => Promise<number>,
     validator: (value: number) => boolean,
-  ) => Promise<number>;
-}
-
-async function loadTradingViewClient(options: LoadOptions = {}) {
+  ) => Promise<number>,
+) {
   vi.resetModules();
 
-  const getOrFetchValidated = options.getOrFetchValidatedImpl
-    ? vi.fn(options.getOrFetchValidatedImpl)
-    : createPassthroughCacheGetOrFetchValidatedMock<number>();
-
-  const createCache = vi.fn().mockReturnValue({
-    getOrFetchValidated,
-  });
-
-  const { fetchWithTimeout, buildFetchHeaders } = createApiHelpersMocks();
+  const mocks = createServiceModuleMocks<number>(getOrFetchValidatedImpl);
 
   vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache,
+    createCache: mocks.createCache,
   }));
 
   vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout,
-    buildFetchHeaders,
+    fetchWithTimeout: mocks.fetchWithTimeout,
+    buildFetchHeaders: mocks.buildFetchHeaders,
   }));
 
   const { TradingViewClient } = await import("./tradingview-client.js");
 
   return {
     TradingViewClient,
-    getOrFetchValidated,
-    createCache,
-    fetchWithTimeout,
-    buildFetchHeaders,
+    getOrFetchValidated: mocks.getOrFetchValidated,
+    fetchWithTimeout: mocks.fetchWithTimeout,
   };
 }
 
@@ -113,10 +98,8 @@ describe("TradingViewClient", () => {
   });
 
   it("returns null on unexpected cache errors", async () => {
-    const { TradingViewClient } = await loadTradingViewClient({
-      getOrFetchValidatedImpl: async () => {
-        throw new Error("cache error");
-      },
+    const { TradingViewClient } = await loadTradingViewClient(async () => {
+      throw new Error("cache error");
     });
 
     const client = new TradingViewClient({ child: vi.fn() } as never);
@@ -126,20 +109,18 @@ describe("TradingViewClient", () => {
 
   it("refetches when cached price is not finite", async () => {
     const { TradingViewClient, fetchWithTimeout } = await loadTradingViewClient(
-      {
-        getOrFetchValidatedImpl: async (_key, fetcher, validator) => {
-          const staleValue = Number.NaN;
-          if (!validator(staleValue)) {
-            fetchWithTimeout.mockResolvedValue(
-              new Response(JSON.stringify({ close: 5000 }), {
-                status: 200,
-                headers: { "content-type": "application/json" },
-              }),
-            );
-            return fetcher();
-          }
-          return staleValue;
-        },
+      async (_key, fetcher, validator) => {
+        const staleValue = Number.NaN;
+        if (!validator(staleValue)) {
+          fetchWithTimeout.mockResolvedValue(
+            new Response(JSON.stringify({ close: 5000 }), {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+          return fetcher();
+        }
+        return staleValue;
       },
     );
 

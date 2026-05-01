@@ -6,7 +6,7 @@ interface ApiKeyAuthConfig {
   apiKey: string | undefined;
 }
 
-export function hasValidApiKey(
+function hasValidApiKey(
   expectedApiKey: string | undefined,
   rawApiKeyValue: unknown,
 ): boolean {

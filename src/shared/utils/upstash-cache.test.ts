@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createMockLogger } from "../test-utils/service-test-helpers.js";
 
 interface LoadOptions {
   url?: string;
@@ -60,7 +61,7 @@ async function loadUpstashCacheModule(options: LoadOptions = {}) {
 describe("UpstashCache", () => {
   it("throws when credentials are missing", async () => {
     const { UpstashCache } = await loadUpstashCacheModule();
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
 
     expect(() => new UpstashCache<number>(1000, logger as never)).toThrow(
       "UPSTASH_REDIS_URL and UPSTASH_REDIS_TOKEN must be set",
@@ -74,7 +75,7 @@ describe("UpstashCache", () => {
       getImpl: async () => 9,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.get("game:1")).resolves.toBe(9);
@@ -90,7 +91,7 @@ describe("UpstashCache", () => {
       },
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.get("game:1")).resolves.toBeNull();
@@ -106,7 +107,7 @@ describe("UpstashCache", () => {
       token: "token",
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1500, logger as never);
 
     await cache.set("game:1", 88);
@@ -123,7 +124,7 @@ describe("UpstashCache", () => {
       },
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.set("game:1", 88)).resolves.toBeUndefined();
@@ -140,7 +141,7 @@ describe("UpstashCache", () => {
       getImpl: async () => 72,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
 
@@ -155,7 +156,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(55);
 
@@ -171,7 +172,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     let resolveFetcher: ((value: number) => void) | null = null;
@@ -202,7 +203,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     const fetcher = vi
@@ -223,7 +224,7 @@ describe("UpstashCache", () => {
       token: "token",
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     await cache.delete("game:1");
@@ -240,7 +241,7 @@ describe("UpstashCache", () => {
       },
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.delete("game:1")).resolves.toBeUndefined();
@@ -257,7 +258,7 @@ describe("UpstashCache", () => {
       getImpl: async () => 42,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi.fn().mockReturnValue(true);
@@ -277,7 +278,7 @@ describe("UpstashCache", () => {
       getImpl: async () => 42,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi
@@ -303,7 +304,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(55);
     const validator = vi.fn().mockReturnValue(true);
@@ -322,12 +323,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-    };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(55);
     const validator = vi.fn().mockReturnValue(false);
@@ -345,12 +341,7 @@ describe("UpstashCache", () => {
       getImpl: async () => 42,
     });
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-    };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi.fn().mockReturnValue(false);
@@ -369,12 +360,7 @@ describe("UpstashCache", () => {
       getImpl: async () => ({ name: null, score: 90 }),
     });
 
-    const logger = {
-      info: vi.fn(),
-      debug: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-    };
+    const logger = createMockLogger();
     const cache = new UpstashCache<{ name: string | null; score: number }>(
       1000,
       logger as never,
@@ -406,7 +392,7 @@ describe("UpstashCache", () => {
       getImpl: async () => null,
     });
 
-    const logger = { info: vi.fn(), debug: vi.fn(), error: vi.fn() };
+    const logger = createMockLogger();
     const cache = new UpstashCache<number>(1000, logger as never);
 
     let resolveFetcher: ((value: number) => void) | null = null;
