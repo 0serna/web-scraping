@@ -546,6 +546,132 @@ describe("ModelRankingService", () => {
     });
   });
 
+  it("excludes models with excluded slug prefix", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        {
+          slug: "claude-4-sonnet",
+          model: "Claude 4 Sonnet",
+          frontierModel: true,
+          agentic: 90,
+          coding: 80,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+        },
+        {
+          slug: "gpt-5-5",
+          model: "GPT-5.5",
+          frontierModel: true,
+          agentic: 70,
+          coding: 60,
+          blendedPrice: 0.25,
+          inputPrice: 0.2,
+          outputPrice: 0.4,
+        },
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      {
+        model: "GPT-5.5",
+        position: 1,
+        score: 100,
+      },
+    ]);
+  });
+
+  it("excludes claude models but keeps other frontier models", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        {
+          slug: "claude-4-sonnet",
+          model: "Claude 4 Sonnet",
+          frontierModel: true,
+          agentic: 90,
+          coding: 80,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+        },
+        {
+          slug: "gemini-2-pro",
+          model: "Gemini 2 Pro",
+          frontierModel: true,
+          agentic: 70,
+          coding: 60,
+          blendedPrice: 0.25,
+          inputPrice: 0.2,
+          outputPrice: 0.4,
+        },
+        {
+          slug: "gpt-5-5",
+          model: "GPT-5.5",
+          frontierModel: true,
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.3,
+          inputPrice: 0.2,
+          outputPrice: 0.5,
+        },
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      {
+        model: "GPT-5.5",
+        position: 1,
+        score: 100,
+      },
+      {
+        model: "Gemini 2 Pro",
+        position: 2,
+        score: 86.84,
+      },
+    ]);
+  });
+
+  it("ranks next model at position 1 when top model is excluded", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        {
+          slug: "claude-4-sonnet",
+          model: "Claude 4 Sonnet",
+          frontierModel: true,
+          agentic: 100,
+          coding: 100,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+        },
+        {
+          slug: "gpt-5-5",
+          model: "GPT-5.5",
+          frontierModel: true,
+          agentic: 70,
+          coding: 60,
+          blendedPrice: 0.25,
+          inputPrice: 0.2,
+          outputPrice: 0.4,
+        },
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      {
+        model: "GPT-5.5",
+        position: 1,
+        score: 100,
+      },
+    ]);
+  });
+
   it("keeps zero-blended-price frontier models in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([

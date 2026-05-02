@@ -4,6 +4,7 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
 const WEIGHT_INTELLIGENCE_CODING = 0.4;
+const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
 function isRankableFrontierModel(
   model: ArtificialAnalysisModel,
@@ -49,6 +50,12 @@ export class ModelRankingService {
 
     const scoredModels: ScoredModel[] = models
       .filter(isRankableFrontierModel)
+      .filter(
+        (model) =>
+          !EXCLUDED_SLUG_PREFIXES.some((prefix) =>
+            model.slug.startsWith(prefix),
+          ),
+      )
       .map((model) => {
         return {
           model: model.model,
