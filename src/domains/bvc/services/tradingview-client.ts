@@ -9,7 +9,7 @@ import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
 
 const TRADINGVIEW_API_URL = "https://scanner.tradingview.com/symbol";
-const TRADINGVIEW_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+const TRADINGVIEW_CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute
 
 interface TradingViewResponse {
   close?: number;

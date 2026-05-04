@@ -13,6 +13,7 @@ function rankingModel(
     inputPrice: null,
     outputPrice: null,
     intelligenceIndexOutputTokens: null,
+    tokensPerSecond: null,
     ...overrides,
   };
 }
@@ -85,6 +86,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.25,
           outputPrice: 0.75,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "model-b",
@@ -96,6 +98,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.25,
           outputPrice: 0.75,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "model-c",
@@ -107,6 +110,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.15,
           outputPrice: 0.6,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
       ]),
     };
@@ -118,11 +122,13 @@ describe("ModelRankingService", () => {
         model: "Model B",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Model A",
         position: 2,
         score: 78.13,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -175,6 +181,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.2,
           outputPrice: 0.4,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "model-a-smart",
@@ -186,6 +193,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.5,
           outputPrice: 1.5,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "model-b",
@@ -197,6 +205,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.1,
           outputPrice: 0.2,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
       ]),
     };
@@ -208,16 +217,19 @@ describe("ModelRankingService", () => {
         model: "Model A",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Model A",
         position: 2,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Model B",
         position: 3,
         score: 91.43,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -234,6 +246,7 @@ describe("ModelRankingService", () => {
         inputPrice: 0.1,
         outputPrice: 0.2,
         intelligenceIndexOutputTokens: null,
+        tokensPerSecond: null,
       },
       {
         slug: "model-x-expensive",
@@ -245,6 +258,7 @@ describe("ModelRankingService", () => {
         inputPrice: 0.3,
         outputPrice: 0.4,
         intelligenceIndexOutputTokens: null,
+        tokensPerSecond: null,
       },
       {
         slug: "model-y",
@@ -256,6 +270,7 @@ describe("ModelRankingService", () => {
         inputPrice: 0.5,
         outputPrice: 0.6,
         intelligenceIndexOutputTokens: null,
+        tokensPerSecond: null,
       },
     ];
 
@@ -283,11 +298,13 @@ describe("ModelRankingService", () => {
       model: "Model X",
       position: 2,
       score: 98.67,
+      tokensPerSecond: null,
     });
     expect(modelXB).toEqual({
       model: "Model X",
       position: 2,
       score: 98.67,
+      tokensPerSecond: null,
     });
     expect(rankingA).toEqual(rankingB);
   });
@@ -310,6 +327,7 @@ describe("ModelRankingService", () => {
         model: "Model A",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -361,6 +379,7 @@ describe("ModelRankingService", () => {
           inputPrice: null,
           outputPrice: null,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "model-b",
@@ -372,6 +391,7 @@ describe("ModelRankingService", () => {
           inputPrice: null,
           outputPrice: null,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
       ]),
     };
@@ -383,6 +403,7 @@ describe("ModelRankingService", () => {
         model: "Model B",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -402,6 +423,7 @@ describe("ModelRankingService", () => {
         model: "Model A",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -439,11 +461,13 @@ describe("ModelRankingService", () => {
         model: "Frontier Non-Reasoning",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Frontier Reasoning",
         position: 2,
         score: 80,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -461,6 +485,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.3,
           outputPrice: 0.7,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "non-frontier-model",
@@ -472,6 +497,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.2,
           outputPrice: 0.4,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
       ]),
     };
@@ -483,6 +509,7 @@ describe("ModelRankingService", () => {
         model: "Frontier Model",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -500,6 +527,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.05,
           outputPrice: 0.2,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "frontier-expensive",
@@ -511,6 +539,7 @@ describe("ModelRankingService", () => {
           inputPrice: 5.0,
           outputPrice: 20.0,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
         {
           slug: "non-frontier-cheap",
@@ -522,6 +551,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.005,
           outputPrice: 0.02,
           intelligenceIndexOutputTokens: null,
+          tokensPerSecond: null,
         },
       ]),
     };
@@ -535,11 +565,13 @@ describe("ModelRankingService", () => {
         model: "Frontier Expensive",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Frontier Cheap",
         position: 2,
         score: 62.5,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -633,6 +665,7 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -661,11 +694,13 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Gemini 2 Pro",
         position: 2,
         score: 86.84,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -684,6 +719,7 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -719,11 +755,13 @@ describe("ModelRankingService", () => {
         model: "Model A",
         position: 1,
         score: 100,
+        tokensPerSecond: null,
       },
       {
         model: "Model B",
         position: 2,
         score: 90,
+        tokensPerSecond: null,
       },
     ]);
   });
@@ -826,5 +864,51 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expectEfficientModelFirst(ranking);
+  });
+
+  it("includes tokensPerSecond from source model in ranking", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-with-speed",
+        model: "Model With Speed",
+        agentic: 80,
+        coding: 70,
+        tokensPerSecond: 114,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "Model With Speed",
+        position: 1,
+        score: 100,
+        tokensPerSecond: 114,
+      },
+    ]);
+  });
+
+  it("returns null tokensPerSecond when source model has no speed data", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-no-speed",
+        model: "Model No Speed",
+        agentic: 80,
+        coding: 70,
+        tokensPerSecond: null,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "Model No Speed",
+        position: 1,
+        score: 100,
+        tokensPerSecond: null,
+      },
+    ]);
   });
 });

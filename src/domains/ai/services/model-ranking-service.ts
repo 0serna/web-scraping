@@ -31,6 +31,7 @@ interface ScoredModel {
   finalInternalScore: number;
   coding: number;
   agentic: number;
+  tokensPerSecond: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
@@ -78,6 +79,7 @@ function toScoredModel(model: RankableModel): ScoredModel {
     finalInternalScore: baseScore,
     coding: model.coding,
     agentic: model.agentic,
+    tokensPerSecond: model.tokensPerSecond,
   };
 }
 
@@ -156,6 +158,7 @@ export class ModelRankingService {
       score: Number(
         ((entry.finalInternalScore / topFinalInternalScore) * 100).toFixed(2),
       ),
+      tokensPerSecond: entry.tokensPerSecond,
     }));
   }
 }

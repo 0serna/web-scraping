@@ -9,7 +9,7 @@ import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
 
 const TRII_STOCK_LIST_URL = "https://trii.co/stock-list";
-const TRII_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+const TRII_CACHE_TTL_MS = 1 * 60 * 1000; // 1 minute
 const TRII_CACHE_KEY = "trii-stock-list";
 
 type TriiPriceMap = Record<string, number>;
