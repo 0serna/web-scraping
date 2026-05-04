@@ -17,6 +17,60 @@ function rankingModel(
   };
 }
 
+function createServiceForModels(models: ArtificialAnalysisModel[]) {
+  return new ModelRankingService({
+    getModels: vi.fn().mockResolvedValue(models),
+  } as never);
+}
+
+function excludedClaudeModel(score = 90): ArtificialAnalysisModel {
+  return rankingModel({
+    slug: "claude-4-sonnet",
+    model: "Claude 4 Sonnet",
+    agentic: score,
+    coding: score,
+    blendedPrice: 0.5,
+    inputPrice: 0.3,
+    outputPrice: 0.7,
+  });
+}
+
+function gpt55Model(agentic = 70, coding = 60): ArtificialAnalysisModel {
+  return rankingModel({
+    slug: "gpt-5-5",
+    model: "GPT-5.5",
+    agentic,
+    coding,
+    blendedPrice: 0.25,
+    inputPrice: 0.2,
+    outputPrice: 0.4,
+  });
+}
+
+function tokenRankingModel(
+  slug: string,
+  model: string,
+  outputTokens: number,
+): ArtificialAnalysisModel {
+  return rankingModel({
+    slug,
+    model,
+    agentic: 80,
+    coding: 70,
+    blendedPrice: outputTokens < 20000 ? 0.25 : 0.5,
+    inputPrice: outputTokens < 20000 ? 0.15 : 0.3,
+    outputPrice: outputTokens < 20000 ? 0.3 : 0.7,
+    intelligenceIndexOutputTokens: outputTokens,
+  });
+}
+
+function expectEfficientModelFirst(
+  ranking: Awaited<ReturnType<ModelRankingService["getRanking"]>>,
+) {
+  expect(ranking[0].model).toBe("Model Efficient");
+  expect(ranking[0].position).toBe(1);
+}
+
 describe("ModelRankingService", () => {
   it("filters models without required fields and ranks by base score", async () => {
     const artificialAnalysisClient = {
@@ -239,23 +293,17 @@ describe("ModelRankingService", () => {
   });
 
   it("returns 100 for the top-ranked model", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        {
-          slug: "model-a",
-          model: "Model A",
-          frontierModel: true,
-          agentic: 80.123,
-          coding: 40.456,
-          blendedPrice: 0.2625,
-          inputPrice: 0.15,
-          outputPrice: 0.6,
-          intelligenceIndexOutputTokens: null,
-        },
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-a",
+        model: "Model A",
+        agentic: 80.123,
+        coding: 40.456,
+        blendedPrice: 0.2625,
+        inputPrice: 0.15,
+        outputPrice: 0.6,
+      }),
+    ]);
 
     await expect(service.getRanking()).resolves.toEqual([
       {
@@ -269,17 +317,15 @@ describe("ModelRankingService", () => {
   it("returns all ranked models", async () => {
     const models = Array.from({ length: 30 }, (_, index) => {
       const rank = index + 1;
-      return {
+      return rankingModel({
         slug: `model-${rank}`,
         model: `Model ${rank}`,
-        frontierModel: true,
         agentic: 100 - index,
         coding: 100 - index,
         blendedPrice: 0.5,
         inputPrice: 0.5,
         outputPrice: 1.25,
-        intelligenceIndexOutputTokens: null,
-      };
+      });
     });
 
     const artificialAnalysisClient = {
@@ -342,23 +388,14 @@ describe("ModelRankingService", () => {
   });
 
   it("includes frontier model without price data", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        {
-          slug: "model-a",
-          model: "Model A",
-          frontierModel: true,
-          agentic: 90,
-          coding: 80,
-          blendedPrice: null,
-          inputPrice: null,
-          outputPrice: null,
-          intelligenceIndexOutputTokens: null,
-        },
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-a",
+        model: "Model A",
+        agentic: 90,
+        coding: 80,
+      }),
+    ]);
 
     await expect(service.getRanking()).resolves.toEqual([
       {
@@ -372,30 +409,26 @@ describe("ModelRankingService", () => {
   it("includes frontier non-reasoning model in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        {
+        rankingModel({
           slug: "frontier-reasoning",
           model: "Frontier Reasoning",
           reasoningModel: true,
-          frontierModel: true,
           agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-          intelligenceIndexOutputTokens: null,
-        },
-        {
+        }),
+        rankingModel({
           slug: "frontier-non-reasoning",
           model: "Frontier Non-Reasoning",
           reasoningModel: false,
-          frontierModel: true,
           agentic: 95,
           coding: 95,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
-          intelligenceIndexOutputTokens: null,
-        },
+        }),
       ]),
     };
 
@@ -590,30 +623,10 @@ describe("ModelRankingService", () => {
   });
 
   it("excludes models with excluded slug prefix", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        rankingModel({
-          slug: "claude-4-sonnet",
-          model: "Claude 4 Sonnet",
-          agentic: 90,
-          coding: 80,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-        }),
-        rankingModel({
-          slug: "gpt-5-5",
-          model: "GPT-5.5",
-          agentic: 70,
-          coding: 60,
-          blendedPrice: 0.25,
-          inputPrice: 0.2,
-          outputPrice: 0.4,
-        }),
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const service = createServiceForModels([
+      excludedClaudeModel(),
+      gpt55Model(),
+    ]);
 
     await expect(service.getRanking()).resolves.toEqual([
       {
@@ -627,15 +640,7 @@ describe("ModelRankingService", () => {
   it("excludes claude models but keeps other frontier models", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        rankingModel({
-          slug: "claude-4-sonnet",
-          model: "Claude 4 Sonnet",
-          agentic: 90,
-          coding: 80,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-        }),
+        excludedClaudeModel(),
         rankingModel({
           slug: "gemini-2-pro",
           model: "Gemini 2 Pro",
@@ -645,15 +650,7 @@ describe("ModelRankingService", () => {
           inputPrice: 0.2,
           outputPrice: 0.4,
         }),
-        rankingModel({
-          slug: "gpt-5-5",
-          model: "GPT-5.5",
-          agentic: 80,
-          coding: 70,
-          blendedPrice: 0.3,
-          inputPrice: 0.2,
-          outputPrice: 0.5,
-        }),
+        gpt55Model(80, 70),
       ]),
     };
 
@@ -675,26 +672,9 @@ describe("ModelRankingService", () => {
 
   it("ranks next model at position 1 when top model is excluded", async () => {
     const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        rankingModel({
-          slug: "claude-4-sonnet",
-          model: "Claude 4 Sonnet",
-          agentic: 100,
-          coding: 100,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-        }),
-        rankingModel({
-          slug: "gpt-5-5",
-          model: "GPT-5.5",
-          agentic: 70,
-          coding: 60,
-          blendedPrice: 0.25,
-          inputPrice: 0.2,
-          outputPrice: 0.4,
-        }),
-      ]),
+      getModels: vi
+        .fn()
+        .mockResolvedValue([excludedClaudeModel(100), gpt55Model()]),
     };
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
@@ -711,28 +691,24 @@ describe("ModelRankingService", () => {
   it("keeps zero-blended-price frontier models in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        {
+        rankingModel({
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
           agentic: 100,
           coding: 100,
           blendedPrice: 0,
           inputPrice: 0,
           outputPrice: 0,
-          intelligenceIndexOutputTokens: null,
-        },
-        {
+        }),
+        rankingModel({
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
           agentic: 90,
           coding: 90,
           blendedPrice: 0.625,
           inputPrice: 0.5,
           outputPrice: 1,
-          intelligenceIndexOutputTokens: null,
-        },
+        }),
       ]),
     };
 
@@ -763,26 +739,16 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-          intelligenceIndexOutputTokens: 50000,
+          intelligenceIndexOutputTokens: 200000,
         }),
-        rankingModel({
-          slug: "model-efficient",
-          model: "Model Efficient",
-          agentic: 80,
-          coding: 70,
-          blendedPrice: 0.25,
-          inputPrice: 0.15,
-          outputPrice: 0.3,
-          intelligenceIndexOutputTokens: 10000,
-        }),
+        tokenRankingModel("model-efficient", "Model Efficient", 10000),
       ]),
     };
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expect(ranking[0].model).toBe("Model Efficient");
-    expect(ranking[0].position).toBe(1);
+    expectEfficientModelFirst(ranking);
     expect(ranking[0].score).toBe(100);
   });
 
@@ -853,35 +819,12 @@ describe("ModelRankingService", () => {
   });
 
   it("uses efficiency to break equal final-score ties", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        rankingModel({
-          slug: "model-efficient",
-          model: "Model Efficient",
-          agentic: 80,
-          coding: 70,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-          intelligenceIndexOutputTokens: 10000,
-        }),
-        rankingModel({
-          slug: "model-inefficient",
-          model: "Model Inefficient",
-          agentic: 80,
-          coding: 70,
-          blendedPrice: 0.25,
-          inputPrice: 0.15,
-          outputPrice: 0.3,
-          intelligenceIndexOutputTokens: 50000,
-        }),
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const service = createServiceForModels([
+      tokenRankingModel("model-efficient", "Model Efficient", 10000),
+      tokenRankingModel("model-inefficient", "Model Inefficient", 50000),
+    ]);
     const ranking = await service.getRanking();
 
-    expect(ranking[0].model).toBe("Model Efficient");
-    expect(ranking[0].position).toBe(1);
+    expectEfficientModelFirst(ranking);
   });
 });

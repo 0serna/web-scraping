@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
+import { mockServiceModuleDependencies } from "../../../shared/test-utils/service-test-helpers.js";
 
 async function loadTriiClient(
   getOrFetchValidatedImpl?: (
@@ -10,18 +10,9 @@ async function loadTriiClient(
 ) {
   vi.resetModules();
 
-  const mocks = createServiceModuleMocks<Record<string, number>>(
+  const mocks = mockServiceModuleDependencies<Record<string, number>>(
     getOrFetchValidatedImpl,
   );
-
-  vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache: mocks.createCache,
-  }));
-
-  vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout: mocks.fetchWithTimeout,
-    buildFetchHeaders: mocks.buildFetchHeaders,
-  }));
 
   const { TriiClient } = await import("./trii-client.js");
 

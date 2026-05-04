@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiHelpersMocks,
+  expectJsonFetchWithRateLimit,
   createPassthroughRateLimiterMock,
 } from "../../../shared/test-utils/service-test-helpers.js";
 
@@ -34,6 +35,26 @@ async function loadSteamDetailsApiClient() {
   };
 }
 
+function jsonResponse(payload: unknown): Response {
+  return new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+async function expectDetailsError(payload: unknown, name: string) {
+  const { SteamDetailsApiClient, fetchWithTimeout } =
+    await loadSteamDetailsApiClient();
+
+  fetchWithTimeout.mockResolvedValue(jsonResponse(payload));
+
+  const client = new SteamDetailsApiClient();
+
+  await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
+    name,
+  });
+}
+
 describe("SteamDetailsApiClient", () => {
   it("returns game name and release date from Steam details payload", async () => {
     const {
@@ -45,23 +66,15 @@ describe("SteamDetailsApiClient", () => {
     } = await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          47780: {
-            success: true,
-            data: {
-              name: "Dead Space 2",
-              release_date: {
-                date: "12 May, 2011",
-              },
-            },
+      jsonResponse({
+        47780: {
+          success: true,
+          data: {
+            name: "Dead Space 2",
+            release_date: { date: "12 May, 2011" },
           },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
         },
-      ),
+      }),
     );
 
     const client = new SteamDetailsApiClient();
@@ -71,161 +84,57 @@ describe("SteamDetailsApiClient", () => {
       releaseYear: 2011,
     });
 
-    expect(createRateLimiter).toHaveBeenCalledWith(10);
-    expect(rateLimiter).toHaveBeenCalledTimes(1);
-    expect(buildFetchHeaders).toHaveBeenCalledWith({
-      Accept: "application/json",
-    });
-    expect(fetchWithTimeout).toHaveBeenCalledWith(
+    expectJsonFetchWithRateLimit(
+      createRateLimiter,
+      rateLimiter,
+      buildFetchHeaders,
+      fetchWithTimeout,
       "https://store.steampowered.com/api/appdetails?appids=47780",
-      {
-        headers: {
-          Accept: "application/json",
-        },
-      },
     );
   });
 
   it("throws SteamFetchError when response is not ok", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } =
-      await loadSteamDetailsApiClient();
+    const loaded = await loadSteamDetailsApiClient();
 
-    fetchWithTimeout.mockResolvedValue(
+    loaded.fetchWithTimeout.mockResolvedValue(
       new Response("error", {
         status: 503,
         statusText: "Service Unavailable",
       }),
     );
 
-    const client = new SteamDetailsApiClient();
+    const client = new loaded.SteamDetailsApiClient();
 
     await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
       name: "SteamFetchError",
     });
   });
 
-  it("throws SteamParseError when app data is missing", async () => {
+  it.each([
+    ["app data is missing", {}],
+    ["steam marks app as unsuccessful", { 47780: { success: false } }],
+    [
+      "game name is invalid",
+      { 47780: { success: true, data: { name: null } } },
+    ],
+  ])("throws SteamParseError when %s", async (_case, payload) => {
+    await expectDetailsError(payload, "SteamParseError");
+  });
+
+  it.each([
+    [
+      "release date is 'Coming Soon'",
+      { release_date: { date: "Coming Soon" } },
+    ],
+    ["release_date is missing", {}],
+  ])("returns undefined releaseYear when %s", async (_case, extraData) => {
     const { SteamDetailsApiClient, fetchWithTimeout } =
       await loadSteamDetailsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
-      new Response(JSON.stringify({}), {
-        status: 200,
-        headers: { "content-type": "application/json" },
+      jsonResponse({
+        47780: { success: true, data: { name: "Some Game", ...extraData } },
       }),
-    );
-
-    const client = new SteamDetailsApiClient();
-
-    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
-      name: "SteamParseError",
-    });
-  });
-
-  it("throws SteamParseError when steam marks app as unsuccessful", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } =
-      await loadSteamDetailsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          47780: {
-            success: false,
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
-    );
-
-    const client = new SteamDetailsApiClient();
-
-    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
-      name: "SteamParseError",
-    });
-  });
-
-  it("throws SteamParseError when game name is invalid", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } =
-      await loadSteamDetailsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          47780: {
-            success: true,
-            data: {
-              name: null,
-            },
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
-    );
-
-    const client = new SteamDetailsApiClient();
-
-    await expect(client.getGameDetailsByAppId("47780")).rejects.toMatchObject({
-      name: "SteamParseError",
-    });
-  });
-
-  it("returns undefined releaseYear when release date is 'Coming Soon'", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } =
-      await loadSteamDetailsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          47780: {
-            success: true,
-            data: {
-              name: "Some Game",
-              release_date: {
-                date: "Coming Soon",
-              },
-            },
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
-    );
-
-    const client = new SteamDetailsApiClient();
-
-    await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
-      name: "Some Game",
-      releaseYear: undefined,
-    });
-  });
-
-  it("returns undefined releaseYear when release_date is missing", async () => {
-    const { SteamDetailsApiClient, fetchWithTimeout } =
-      await loadSteamDetailsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          47780: {
-            success: true,
-            data: {
-              name: "Some Game",
-            },
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
     );
 
     const client = new SteamDetailsApiClient();
@@ -249,23 +158,12 @@ describe("SteamDetailsApiClient", () => {
 
     for (const { input, expected } of testCases) {
       fetchWithTimeout.mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            47780: {
-              success: true,
-              data: {
-                name: "Some Game",
-                release_date: {
-                  date: input,
-                },
-              },
-            },
-          }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" },
+        jsonResponse({
+          47780: {
+            success: true,
+            data: { name: "Some Game", release_date: { date: input } },
           },
-        ),
+        }),
       );
 
       const client = new SteamDetailsApiClient();

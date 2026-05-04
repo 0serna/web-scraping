@@ -1,5 +1,6 @@
 import Fastify from "fastify";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { createFastifyAppTracker } from "../test-utils/fastify-test-helpers.js";
 import { createApiKeyOnRequestHook } from "./api-key-auth.js";
 
 function createServer(auth: {
@@ -13,16 +14,12 @@ function createServer(auth: {
 }
 
 describe("api key auth hook", () => {
-  const apps: Array<ReturnType<typeof createServer>> = [];
-
-  afterEach(async () => {
-    await Promise.all(apps.map((app) => app.close()));
-    apps.length = 0;
-  });
+  const trackApp = createFastifyAppTracker<ReturnType<typeof createServer>>();
 
   it("authorizes when x-api-key header is valid", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const response = await app.inject({
       method: "GET",
@@ -37,8 +34,9 @@ describe("api key auth hook", () => {
   });
 
   it("falls back to apikey query when x-api-key is invalid", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const response = await app.inject({
       method: "GET",
@@ -52,8 +50,9 @@ describe("api key auth hook", () => {
   });
 
   it("falls back to apikey query when x-api-key is empty", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const response = await app.inject({
       method: "GET",
@@ -67,8 +66,9 @@ describe("api key auth hook", () => {
   });
 
   it("authorizes when only apikey query is provided", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const response = await app.inject({
       method: "GET",
@@ -79,8 +79,9 @@ describe("api key auth hook", () => {
   });
 
   it("prioritizes a valid header even if apikey query is invalid", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const response = await app.inject({
       method: "GET",
@@ -94,8 +95,9 @@ describe("api key auth hook", () => {
   });
 
   it("returns 401 when both header and query are missing or invalid", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const missingResponse = await app.inject({
       method: "GET",
@@ -122,8 +124,9 @@ describe("api key auth hook", () => {
   });
 
   it("rejects apiKey and api_key query aliases", async () => {
-    const app = createServer({ isDisabled: false, apiKey: "secret-key" });
-    apps.push(app);
+    const app = trackApp(
+      createServer({ isDisabled: false, apiKey: "secret-key" }),
+    );
 
     const camelCaseResponse = await app.inject({
       method: "GET",

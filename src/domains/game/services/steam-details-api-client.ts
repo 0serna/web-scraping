@@ -1,12 +1,9 @@
 import {
-  buildFetchHeaders,
-  fetchWithTimeout,
-} from "../../../shared/utils/api-helpers.js";
-import {
   type RateLimiter,
   createRateLimiter,
 } from "../../../shared/utils/global-rate-limiter.js";
-import { SteamFetchError, SteamParseError } from "../types/errors.js";
+import { SteamParseError } from "../types/errors.js";
+import { fetchSteamJson } from "./steam-api-client-helpers.js";
 
 interface SteamAppDetailsResponse {
   [appId: string]: {
@@ -32,23 +29,11 @@ export class SteamDetailsApiClient {
   ): Promise<{ name: string; releaseYear?: number }> {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
-    const response = await this.rateLimiter(() =>
-      fetchWithTimeout(url, {
-        headers: buildFetchHeaders({
-          Accept: "application/json",
-        }),
-      }),
+    const data = await fetchSteamJson<SteamAppDetailsResponse>(
+      this.rateLimiter,
+      url,
+      `Failed to fetch Steam app details for app ${appId}`,
     );
-
-    if (!response.ok) {
-      throw new SteamFetchError(
-        `Failed to fetch Steam app details for app ${appId}`,
-        response.status,
-        response.statusText,
-      );
-    }
-
-    const data = (await response.json()) as SteamAppDetailsResponse;
 
     const appData = data[appId];
     if (!appData) {

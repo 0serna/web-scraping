@@ -1,5 +1,6 @@
 import Fastify from "fastify";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createFastifyAppTracker } from "../../../shared/test-utils/fastify-test-helpers.js";
 import { infoRoutes } from "./info.js";
 
 function createServer(gameInfoService: {
@@ -11,17 +12,11 @@ function createServer(gameInfoService: {
 }
 
 describe("infoRoutes", () => {
-  const apps: Array<ReturnType<typeof createServer>> = [];
-
-  afterEach(async () => {
-    await Promise.all(apps.map((app) => app.close()));
-    apps.length = 0;
-  });
+  const trackApp = createFastifyAppTracker<ReturnType<typeof createServer>>();
 
   it("returns 400 when url query is missing", async () => {
     const gameInfoService = { getGameInfoByAppId: vi.fn() };
-    const app = createServer(gameInfoService);
-    apps.push(app);
+    const app = trackApp(createServer(gameInfoService));
 
     const response = await app.inject({
       method: "GET",
@@ -40,8 +35,7 @@ describe("infoRoutes", () => {
 
   it("returns 400 when steam app id cannot be extracted", async () => {
     const gameInfoService = { getGameInfoByAppId: vi.fn() };
-    const app = createServer(gameInfoService);
-    apps.push(app);
+    const app = trackApp(createServer(gameInfoService));
 
     const response = await app.inject({
       method: "GET",
@@ -66,8 +60,7 @@ describe("infoRoutes", () => {
       }),
     };
 
-    const app = createServer(gameInfoService);
-    apps.push(app);
+    const app = trackApp(createServer(gameInfoService));
 
     const response = await app.inject({
       method: "GET",
@@ -88,8 +81,7 @@ describe("infoRoutes", () => {
       getGameInfoByAppId: vi.fn().mockRejectedValue(new Error("steam error")),
     };
 
-    const app = createServer(gameInfoService);
-    apps.push(app);
+    const app = trackApp(createServer(gameInfoService));
 
     const response = await app.inject({
       method: "GET",

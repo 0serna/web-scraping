@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
+import { mockServiceModuleDependencies } from "../../../shared/test-utils/service-test-helpers.js";
 
 async function loadTradingViewClient(
   getOrFetchValidatedImpl?: (
@@ -10,16 +10,7 @@ async function loadTradingViewClient(
 ) {
   vi.resetModules();
 
-  const mocks = createServiceModuleMocks<number>(getOrFetchValidatedImpl);
-
-  vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache: mocks.createCache,
-  }));
-
-  vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout: mocks.fetchWithTimeout,
-    buildFetchHeaders: mocks.buildFetchHeaders,
-  }));
+  const mocks = mockServiceModuleDependencies<number>(getOrFetchValidatedImpl);
 
   const { TradingViewClient } = await import("./tradingview-client.js");
 
@@ -28,6 +19,13 @@ async function loadTradingViewClient(
     getOrFetchValidated: mocks.getOrFetchValidated,
     fetchWithTimeout: mocks.fetchWithTimeout,
   };
+}
+
+function tradingViewJsonResponse(close: unknown): Response {
+  return new Response(JSON.stringify({ close }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
 }
 
 describe("TradingViewClient", () => {
@@ -43,12 +41,7 @@ describe("TradingViewClient", () => {
   it("returns normalized ticker and price when fetch succeeds", async () => {
     const { TradingViewClient, fetchWithTimeout, getOrFetchValidated } =
       await loadTradingViewClient();
-    fetchWithTimeout.mockResolvedValue(
-      new Response(JSON.stringify({ close: 1234.5 }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
-    );
+    fetchWithTimeout.mockResolvedValue(tradingViewJsonResponse(1234.5));
 
     const client = new TradingViewClient({ child: vi.fn() } as never);
 
@@ -83,12 +76,7 @@ describe("TradingViewClient", () => {
   it("throws BvcParseError when close is invalid", async () => {
     const { TradingViewClient, fetchWithTimeout } =
       await loadTradingViewClient();
-    fetchWithTimeout.mockResolvedValue(
-      new Response(JSON.stringify({ close: "n/a" }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
-    );
+    fetchWithTimeout.mockResolvedValue(tradingViewJsonResponse("n/a"));
 
     const client = new TradingViewClient({ child: vi.fn() } as never);
 
@@ -112,12 +100,7 @@ describe("TradingViewClient", () => {
       async (_key, fetcher, validator) => {
         const staleValue = Number.NaN;
         if (!validator(staleValue)) {
-          fetchWithTimeout.mockResolvedValue(
-            new Response(JSON.stringify({ close: 5000 }), {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            }),
-          );
+          fetchWithTimeout.mockResolvedValue(tradingViewJsonResponse(5000));
           return fetcher();
         }
         return staleValue;

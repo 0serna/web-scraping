@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiHelpersMocks,
+  expectJsonFetchWithRateLimit,
   createPassthroughRateLimiterMock,
 } from "../../../shared/test-utils/service-test-helpers.js";
 
@@ -56,6 +57,30 @@ async function loadSteamReviewsApiClient(options: LoadOptions = {}) {
   };
 }
 
+function jsonResponse(payload: unknown): Response {
+  return new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function createLogger() {
+  return { warn: vi.fn(), error: vi.fn() };
+}
+
+async function expectReviewsParseError(payload: unknown) {
+  const { SteamReviewsApiClient, fetchWithTimeout } =
+    await loadSteamReviewsApiClient();
+
+  fetchWithTimeout.mockResolvedValue(jsonResponse(payload));
+
+  const client = new SteamReviewsApiClient(createLogger() as never);
+
+  await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
+    name: "SteamParseError",
+  });
+}
+
 describe("SteamReviewsApiClient", () => {
   it("returns rounded score from Steam reviews payload", async () => {
     const {
@@ -67,42 +92,27 @@ describe("SteamReviewsApiClient", () => {
     } = await loadSteamReviewsApiClient();
 
     fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: 1,
-          query_summary: {
-            total_positive: 2,
-            total_reviews: 3,
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
+      jsonResponse({
+        success: 1,
+        query_summary: {
+          total_positive: 2,
+          total_reviews: 3,
         },
-      ),
+      }),
     );
 
-    const client = new SteamReviewsApiClient({
-      warn: vi.fn(),
-      error: vi.fn(),
-    } as never);
+    const client = new SteamReviewsApiClient(createLogger() as never);
 
     await expect(client.getScoreByAppId("47780")).resolves.toEqual({
       score: 66.67,
     });
 
-    expect(createRateLimiter).toHaveBeenCalledWith(10);
-    expect(rateLimiter).toHaveBeenCalledTimes(1);
-    expect(buildFetchHeaders).toHaveBeenCalledWith({
-      Accept: "application/json",
-    });
-    expect(fetchWithTimeout).toHaveBeenCalledWith(
+    expectJsonFetchWithRateLimit(
+      createRateLimiter,
+      rateLimiter,
+      buildFetchHeaders,
+      fetchWithTimeout,
       "https://store.steampowered.com/appreviews/47780?json=1&filter=all&language=all&purchase_type=all&num_per_page=0",
-      {
-        headers: {
-          Accept: "application/json",
-        },
-      },
     );
   });
 
@@ -117,74 +127,24 @@ describe("SteamReviewsApiClient", () => {
       }),
     );
 
-    const client = new SteamReviewsApiClient({
-      warn: vi.fn(),
-      error: vi.fn(),
-    } as never);
+    const client = new SteamReviewsApiClient(createLogger() as never);
 
     await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
       name: "SteamFetchError",
     });
   });
 
-  it("throws SteamParseError when success flag is not 1", async () => {
-    const { SteamReviewsApiClient, fetchWithTimeout } =
-      await loadSteamReviewsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: 0,
-          query_summary: {
-            total_positive: 5,
-            total_reviews: 10,
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
-    );
-
-    const client = new SteamReviewsApiClient({
-      warn: vi.fn(),
-      error: vi.fn(),
-    } as never);
-
-    await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
-      name: "SteamParseError",
-    });
-  });
-
-  it("throws SteamParseError when score cannot be calculated", async () => {
-    const { SteamReviewsApiClient, fetchWithTimeout } =
-      await loadSteamReviewsApiClient();
-
-    fetchWithTimeout.mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: 1,
-          query_summary: {
-            total_positive: 0,
-            total_reviews: 0,
-          },
-        }),
-        {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        },
-      ),
-    );
-
-    const client = new SteamReviewsApiClient({
-      warn: vi.fn(),
-      error: vi.fn(),
-    } as never);
-
-    await expect(client.getScoreByAppId("47780")).rejects.toMatchObject({
-      name: "SteamParseError",
-    });
+  it.each([
+    [
+      "success flag is not 1",
+      { success: 0, query_summary: { total_positive: 5, total_reviews: 10 } },
+    ],
+    [
+      "score cannot be calculated",
+      { success: 1, query_summary: { total_positive: 0, total_reviews: 0 } },
+    ],
+  ])("throws SteamParseError when %s", async (_case, payload) => {
+    await expectReviewsParseError(payload);
   });
 
   it("delegates unexpected errors to steam error handler", async () => {

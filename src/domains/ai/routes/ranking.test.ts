@@ -1,5 +1,6 @@
 import Fastify from "fastify";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createFastifyAppTracker } from "../../../shared/test-utils/fastify-test-helpers.js";
 import { rankingRoutes } from "./ranking.js";
 
 interface ModelRankingServiceMock {
@@ -21,12 +22,7 @@ function createServer(modelRankingService: ModelRankingServiceMock) {
 }
 
 describe("rankingRoutes", () => {
-  const apps: Array<ReturnType<typeof createServer>> = [];
-
-  afterEach(async () => {
-    await Promise.all(apps.map((app) => app.close()));
-    apps.length = 0;
-  });
+  const trackApp = createFastifyAppTracker<ReturnType<typeof createServer>>();
 
   it("returns ranked models", async () => {
     const modelRankingService = {
@@ -44,8 +40,7 @@ describe("rankingRoutes", () => {
       ]),
     };
 
-    const app = createServer(modelRankingService);
-    apps.push(app);
+    const app = trackApp(createServer(modelRankingService));
 
     const response = await app.inject({
       method: "GET",
@@ -72,8 +67,7 @@ describe("rankingRoutes", () => {
       getRanking: vi.fn().mockRejectedValue(new Error("ranking error")),
     };
 
-    const app = createServer(modelRankingService);
-    apps.push(app);
+    const app = trackApp(createServer(modelRankingService));
 
     const response = await app.inject({
       method: "GET",

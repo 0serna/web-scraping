@@ -1,14 +1,11 @@
 import type { FastifyBaseLogger } from "fastify";
 import {
-  buildFetchHeaders,
-  fetchWithTimeout,
-} from "../../../shared/utils/api-helpers.js";
-import {
   type RateLimiter,
   createRateLimiter,
 } from "../../../shared/utils/global-rate-limiter.js";
 import { SteamFetchError, SteamParseError } from "../types/errors.js";
 import { handleSteamError } from "../utils/steam-error-handler.js";
+import { fetchSteamJson } from "./steam-api-client-helpers.js";
 
 interface SteamReviewsResponse {
   success: number;
@@ -53,23 +50,11 @@ export class SteamReviewsApiClient {
     try {
       const url = `https://store.steampowered.com/appreviews/${appId}?json=1&filter=all&language=all&purchase_type=all&num_per_page=0`;
 
-      const response = await this.rateLimiter(() =>
-        fetchWithTimeout(url, {
-          headers: buildFetchHeaders({
-            Accept: "application/json",
-          }),
-        }),
+      const data = await fetchSteamJson<SteamReviewsResponse>(
+        this.rateLimiter,
+        url,
+        `Failed to fetch Steam reviews API for app ${appId}`,
       );
-
-      if (!response.ok) {
-        throw new SteamFetchError(
-          `Failed to fetch Steam reviews API for app ${appId}`,
-          response.status,
-          response.statusText,
-        );
-      }
-
-      const data = (await response.json()) as SteamReviewsResponse;
 
       if (data.success !== 1) {
         throw new SteamParseError(

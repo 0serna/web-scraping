@@ -58,6 +58,55 @@ async function loadUpstashCacheModule(options: LoadOptions = {}) {
   };
 }
 
+async function createNumberCache(options: LoadOptions = {}, ttlMs = 1000) {
+  const loaded = await loadUpstashCacheModule({
+    url: "https://upstash.test",
+    token: "token",
+    ...options,
+  });
+  const logger = createMockLogger();
+  const cache = new loaded.UpstashCache<number>(ttlMs, logger as never);
+
+  return { ...loaded, logger, cache };
+}
+
+function createDeferredNumberFetcher() {
+  let resolveFetcher: (value: number) => void = () => undefined;
+  const fetcher = vi.fn(
+    () =>
+      new Promise<number>((resolve) => {
+        resolveFetcher = resolve;
+      }),
+  );
+
+  return { fetcher, resolveFetcher: (value: number) => resolveFetcher(value) };
+}
+
+async function expectCoalescedNumberFetch(
+  setexMock: ReturnType<typeof vi.fn>,
+  fetcher: ReturnType<typeof vi.fn>,
+  resolveFetcher: (value: number) => void,
+  requests: Array<Promise<number>>,
+) {
+  await vi.waitFor(() => {
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  resolveFetcher(77);
+
+  await expect(Promise.all(requests)).resolves.toEqual([77, 77]);
+  expect(setexMock).toHaveBeenCalledTimes(1);
+}
+
+async function createMissValidationCase(validatorResult: boolean) {
+  const context = await createNumberCache({ getImpl: async () => null });
+  return {
+    ...context,
+    fetcher: vi.fn().mockResolvedValue(55),
+    validator: vi.fn().mockReturnValue(validatorResult),
+  };
+}
+
 describe("UpstashCache", () => {
   it("throws when credentials are missing", async () => {
     const { UpstashCache } = await loadUpstashCacheModule();
@@ -69,30 +118,20 @@ describe("UpstashCache", () => {
   });
 
   it("gets cached values with prefixed keys", async () => {
-    const { UpstashCache, getMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { getMock, cache } = await createNumberCache({
       getImpl: async () => 9,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.get("game:1")).resolves.toBe(9);
     expect(getMock).toHaveBeenCalledWith("ws:game:1");
   });
 
   it("returns null and logs when get fails", async () => {
-    const { UpstashCache } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { logger, cache } = await createNumberCache({
       getImpl: async () => {
         throw new Error("redis-get-error");
       },
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.get("game:1")).resolves.toBeNull();
     expect(logger.error).toHaveBeenCalledWith(
@@ -102,13 +141,7 @@ describe("UpstashCache", () => {
   });
 
   it("stores values using ttl in seconds rounded up", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
-    });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1500, logger as never);
+    const { setexMock, cache } = await createNumberCache({}, 1500);
 
     await cache.set("game:1", 88);
 
@@ -116,16 +149,11 @@ describe("UpstashCache", () => {
   });
 
   it("logs and does not throw when set fails", async () => {
-    const { UpstashCache } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { logger, cache } = await createNumberCache({
       setexImpl: async () => {
         throw new Error("redis-set-error");
       },
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.set("game:1", 88)).resolves.toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith(
@@ -135,14 +163,9 @@ describe("UpstashCache", () => {
   });
 
   it("returns cached value on cache hit without calling fetcher", async () => {
-    const { UpstashCache } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { cache } = await createNumberCache({
       getImpl: async () => 72,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
 
     await expect(cache.getOrFetch("game:1", fetcher)).resolves.toBe(72);
@@ -150,14 +173,9 @@ describe("UpstashCache", () => {
   });
 
   it("fetches and stores value on cache miss", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { setexMock, cache } = await createNumberCache({
       getImpl: async () => null,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(55);
 
     await expect(cache.getOrFetch("game:1", fetcher)).resolves.toBe(55);
@@ -166,45 +184,25 @@ describe("UpstashCache", () => {
   });
 
   it("coalesces concurrent misses for the same key", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { setexMock, cache } = await createNumberCache({
       getImpl: async () => null,
     });
 
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
-
-    let resolveFetcher: ((value: number) => void) | null = null;
-    const fetcher = vi.fn(
-      () =>
-        new Promise<number>((resolve) => {
-          resolveFetcher = resolve;
-        }),
-    );
+    const { fetcher, resolveFetcher } = createDeferredNumberFetcher();
 
     const first = cache.getOrFetch("game:1", fetcher);
     const second = cache.getOrFetch("game:1", fetcher);
 
-    await vi.waitFor(() => {
-      expect(fetcher).toHaveBeenCalledTimes(1);
-    });
-
-    resolveFetcher?.(77);
-
-    await expect(Promise.all([first, second])).resolves.toEqual([77, 77]);
-    expect(setexMock).toHaveBeenCalledTimes(1);
+    await expectCoalescedNumberFetch(setexMock, fetcher, resolveFetcher, [
+      first,
+      second,
+    ]);
   });
 
   it("clears pending requests after fetcher failure", async () => {
-    const { UpstashCache } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { cache } = await createNumberCache({
       getImpl: async () => null,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
 
     const fetcher = vi
       .fn<() => Promise<number>>()
@@ -219,13 +217,7 @@ describe("UpstashCache", () => {
   });
 
   it("deletes a single key with prefix", async () => {
-    const { UpstashCache, delMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
-    });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
+    const { delMock, cache } = await createNumberCache();
 
     await cache.delete("game:1");
 
@@ -233,16 +225,11 @@ describe("UpstashCache", () => {
   });
 
   it("logs and does not throw when delete fails", async () => {
-    const { UpstashCache } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { logger, cache } = await createNumberCache({
       delImpl: async () => {
         throw new Error("redis-del-error");
       },
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
 
     await expect(cache.delete("game:1")).resolves.toBeUndefined();
     expect(logger.error).toHaveBeenCalledWith(
@@ -252,14 +239,9 @@ describe("UpstashCache", () => {
   });
 
   it("returns validated cached value when validator accepts", async () => {
-    const { UpstashCache, getMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { getMock, cache } = await createNumberCache({
       getImpl: async () => 42,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi.fn().mockReturnValue(true);
 
@@ -272,14 +254,9 @@ describe("UpstashCache", () => {
   });
 
   it("invalidates stale cache and refetches when validator rejects", async () => {
-    const { UpstashCache, setexMock, delMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { setexMock, delMock, logger, cache } = await createNumberCache({
       getImpl: async () => 42,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi
       .fn()
@@ -298,16 +275,8 @@ describe("UpstashCache", () => {
   });
 
   it("fetches and validates on cache miss", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
-      getImpl: async () => null,
-    });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
-    const fetcher = vi.fn().mockResolvedValue(55);
-    const validator = vi.fn().mockReturnValue(true);
+    const { setexMock, cache, fetcher, validator } =
+      await createMissValidationCase(true);
 
     await expect(
       cache.getOrFetchValidated("game:1", fetcher, validator),
@@ -317,16 +286,8 @@ describe("UpstashCache", () => {
   });
 
   it("throws when fresh value fails validation", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
-      getImpl: async () => null,
-    });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
-    const fetcher = vi.fn().mockResolvedValue(55);
-    const validator = vi.fn().mockReturnValue(false);
+    const { setexMock, cache, fetcher, validator } =
+      await createMissValidationCase(false);
 
     await expect(
       cache.getOrFetchValidated("game:1", fetcher, validator),
@@ -335,14 +296,9 @@ describe("UpstashCache", () => {
   });
 
   it("does not store invalid fresh value when stale cache was invalidated", async () => {
-    const { UpstashCache, setexMock, delMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { setexMock, delMock, cache } = await createNumberCache({
       getImpl: async () => 42,
     });
-
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
     const fetcher = vi.fn().mockResolvedValue(99);
     const validator = vi.fn().mockReturnValue(false);
 
@@ -367,7 +323,7 @@ describe("UpstashCache", () => {
     );
     const fetcher = vi.fn().mockResolvedValue({ name: "Game", score: 95 });
     const validator = vi.fn((data: { name: string | null; score: number }) => {
-      if (data.name.trim().length > 0) return true;
+      if (data.name!.trim().length > 0) return true;
       return false;
     });
 
@@ -386,34 +342,19 @@ describe("UpstashCache", () => {
   });
 
   it("coalesces concurrent validated fetches for the same key", async () => {
-    const { UpstashCache, setexMock } = await loadUpstashCacheModule({
-      url: "https://upstash.test",
-      token: "token",
+    const { setexMock, cache } = await createNumberCache({
       getImpl: async () => null,
     });
 
-    const logger = createMockLogger();
-    const cache = new UpstashCache<number>(1000, logger as never);
-
-    let resolveFetcher: ((value: number) => void) | null = null;
-    const fetcher = vi.fn(
-      () =>
-        new Promise<number>((resolve) => {
-          resolveFetcher = resolve;
-        }),
-    );
+    const { fetcher, resolveFetcher } = createDeferredNumberFetcher();
     const validator = vi.fn().mockReturnValue(true);
 
     const first = cache.getOrFetchValidated("game:1", fetcher, validator);
     const second = cache.getOrFetchValidated("game:1", fetcher, validator);
 
-    await vi.waitFor(() => {
-      expect(fetcher).toHaveBeenCalledTimes(1);
-    });
-
-    resolveFetcher?.(77);
-
-    await expect(Promise.all([first, second])).resolves.toEqual([77, 77]);
-    expect(setexMock).toHaveBeenCalledTimes(1);
+    await expectCoalescedNumberFetch(setexMock, fetcher, resolveFetcher, [
+      first,
+      second,
+    ]);
   });
 });

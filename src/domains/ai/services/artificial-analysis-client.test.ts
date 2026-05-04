@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createServiceModuleMocks } from "../../../shared/test-utils/service-test-helpers.js";
+import { mockServiceModuleDependencies } from "../../../shared/test-utils/service-test-helpers.js";
 import type { ArtificialAnalysisModel } from "../types/ranking.js";
 
 interface HtmlPayloadOptions {
@@ -64,18 +64,9 @@ async function loadArtificialAnalysisClient(
 ) {
   vi.resetModules();
 
-  const mocks = createServiceModuleMocks<ArtificialAnalysisModel[]>(
+  const mocks = mockServiceModuleDependencies<ArtificialAnalysisModel[]>(
     getOrFetchValidatedImpl,
   );
-
-  vi.doMock("../../../shared/utils/cache-factory.js", () => ({
-    createCache: mocks.createCache,
-  }));
-
-  vi.doMock("../../../shared/utils/api-helpers.js", () => ({
-    fetchWithTimeout: mocks.fetchWithTimeout,
-    buildFetchHeaders: mocks.buildFetchHeaders,
-  }));
 
   const { ArtificialAnalysisClient } =
     await import("./artificial-analysis-client.js");
@@ -99,6 +90,28 @@ async function parseModelsFromHtml(
   return client.getModels();
 }
 
+function mockHtmlResponse(
+  fetchWithTimeout: ReturnType<typeof vi.fn>,
+  html: string,
+) {
+  fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+}
+
+async function getModelsFromClient(
+  ArtificialAnalysisClient: new (logger: never) => {
+    getModels: () => Promise<ArtificialAnalysisModel[]>;
+  },
+) {
+  const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+  return client.getModels();
+}
+
+function expectFreshFrontier(result: ArtificialAnalysisModel[]) {
+  expect(result).toContainEqual(
+    expect.objectContaining({ slug: "fresh-frontier", frontierModel: true }),
+  );
+}
+
 function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
   return {
     slug,
@@ -112,6 +125,64 @@ function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
     intelligence_index_token_counts:
       outputTokens === undefined ? undefined : { output_tokens: outputTokens },
   };
+}
+
+function freshFrontierRawModel(slug = "fresh-frontier"): unknown {
+  return {
+    slug,
+    reasoning_model: true,
+    frontier_model: true,
+    short_name: "Fresh Frontier",
+    agentic_index: 80,
+    coding_index: 70,
+    price_1m_blended_3_to_1: 1.0,
+  };
+}
+
+function staleModel(overrides: Partial<ArtificialAnalysisModel> = {}) {
+  return {
+    slug: "stale-model",
+    model: "Stale Model",
+    reasoningModel: true,
+    frontierModel: false,
+    agentic: 75,
+    coding: 62,
+    blendedPrice: 0.5,
+    inputPrice: 0.3,
+    outputPrice: 0.7,
+    intelligenceIndexOutputTokens: null,
+    ...overrides,
+  } satisfies ArtificialAnalysisModel;
+}
+
+function expectGpt55PerformanceModels(
+  result: ArtificialAnalysisModel[],
+  xhighReasoningModel: boolean,
+) {
+  expect(result).toContainEqual({
+    slug: "gpt-5-5-medium",
+    model: "GPT-5.5 (medium)",
+    reasoningModel: false,
+    frontierModel: true,
+    agentic: 69.39,
+    coding: 56.21,
+    blendedPrice: null,
+    inputPrice: null,
+    outputPrice: null,
+    intelligenceIndexOutputTokens: null,
+  });
+  expect(result).toContainEqual({
+    slug: "gpt-5-5",
+    model: "GPT-5.5 (xhigh)",
+    reasoningModel: xhighReasoningModel,
+    frontierModel: true,
+    agentic: 74.12,
+    coding: 59.12,
+    blendedPrice: null,
+    inputPrice: null,
+    outputPrice: null,
+    intelligenceIndexOutputTokens: null,
+  });
 }
 
 describe("ArtificialAnalysisClient", () => {
@@ -180,9 +251,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses models with variable channel and spacing", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithModels(
       [
         {
@@ -201,11 +269,7 @@ describe("ArtificialAnalysisClient", () => {
       },
     );
 
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    await expect(client.getModels()).resolves.toEqual([
+    await expect(parseModelsFromHtml(html)).resolves.toEqual([
       {
         slug: "model-c",
         model: "Model C",
@@ -222,9 +286,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses frontier models from embedded detail-page performance data", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithEmbeddedPerformanceModels([
       {
         slug: "gpt-5-5",
@@ -241,35 +302,9 @@ describe("ArtificialAnalysisClient", () => {
         coding_index: 56.21,
       },
     ]);
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+    const result = await parseModelsFromHtml(html);
 
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
-
-    expect(result).toContainEqual({
-      slug: "gpt-5-5-medium",
-      model: "GPT-5.5 (medium)",
-      reasoningModel: false,
-      frontierModel: true,
-      agentic: 69.39,
-      coding: 56.21,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
-      intelligenceIndexOutputTokens: null,
-    });
-    expect(result).toContainEqual({
-      slug: "gpt-5-5",
-      model: "GPT-5.5 (xhigh)",
-      reasoningModel: false,
-      frontierModel: true,
-      agentic: 74.12,
-      coding: 59.12,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
-      intelligenceIndexOutputTokens: null,
-    });
+    expectGpt55PerformanceModels(result, false);
   });
 
   it("throws AiFetchError when page request fails", async () => {
@@ -301,9 +336,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses models distributed across separate chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     // Metadata models (like chunk 31) - no performance data
     const metadataModels = [
       {
@@ -333,11 +365,7 @@ describe("ArtificialAnalysisClient", () => {
     ];
 
     const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     // First model should have merged data
     expect(result).toContainEqual({
@@ -369,9 +397,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles field name variations (isReasoning vs reasoning_model)", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithModels([
       {
         slug: "model-new",
@@ -390,12 +415,7 @@ describe("ArtificialAnalysisClient", () => {
         price_1m_blended_3_to_1: 2.0,
       },
     ]);
-
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual({
       slug: "model-new",
@@ -425,9 +445,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles missing performance data gracefully", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     // Only metadata, no performance data
     const metadataModels = [
       {
@@ -440,11 +457,7 @@ describe("ArtificialAnalysisClient", () => {
     const performanceModels: unknown[] = []; // Empty performance data
 
     const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result).toEqual([
       {
@@ -463,9 +476,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("preserves first-occurrence metadata when same slug appears in multiple chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     // Chunk 1: has isReasoning: true (like chunk 11 from real site)
     const chunk1 = encodeChunk(
       `b:${JSON.stringify({
@@ -503,11 +513,7 @@ describe("ArtificialAnalysisClient", () => {
     );
 
     const html = `<html><body>${chunk1}${chunk2}</body></html>`;
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     // First occurrence should win - isReasoning should be preserved from chunk 1
     expect(result).toContainEqual({
@@ -525,9 +531,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("parses frontier_model from models array", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithModels([
       {
         slug: "frontier-model",
@@ -548,11 +551,7 @@ describe("ArtificialAnalysisClient", () => {
         price_1m_blended_3_to_1: 0.5,
       },
     ]);
-
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual({
       slug: "frontier-model",
@@ -582,9 +581,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("defaults missing frontier_model to false", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithModels([
       {
         slug: "no-frontier-flag",
@@ -595,19 +591,12 @@ describe("ArtificialAnalysisClient", () => {
         price_1m_blended_3_to_1: 1.0,
       },
     ]);
-
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result[0].frontierModel).toBe(false);
   });
 
   it("merges frontier_model from performance data into metadata by slug", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const metadataModels = [
       {
         slug: "gpt-5-4-mini",
@@ -627,10 +616,7 @@ describe("ArtificialAnalysisClient", () => {
     ];
 
     const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual({
       slug: "gpt-5-4-mini",
@@ -647,9 +633,6 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("handles duplicate slugs with identical metadata in multiple chunks", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     // Chunk 1 and Chunk 2 have same slug with identical metadata
     const chunk1 = encodeChunk(
       `b:${JSON.stringify({
@@ -682,11 +665,7 @@ describe("ArtificialAnalysisClient", () => {
     );
 
     const html = `<html><body>${chunk1}${chunk2}</body></html>`;
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     // Should have exactly one entry (no duplicates)
     expect(result).toHaveLength(1);
@@ -705,20 +684,7 @@ describe("ArtificialAnalysisClient", () => {
   });
 
   it("refetches once when cached models have no rankable frontier model", async () => {
-    const staleModels: ArtificialAnalysisModel[] = [
-      {
-        slug: "stale-model",
-        model: "Stale Model",
-        reasoningModel: true,
-        frontierModel: false,
-        agentic: 75,
-        coding: 62,
-        blendedPrice: 0.5,
-        inputPrice: 0.3,
-        outputPrice: 0.7,
-        intelligenceIndexOutputTokens: null,
-      },
-    ];
+    const staleModels: ArtificialAnalysisModel[] = [staleModel()];
 
     let fetchCount = 0;
     const { ArtificialAnalysisClient, fetchWithTimeout } =
@@ -731,44 +697,14 @@ describe("ArtificialAnalysisClient", () => {
         return fetcher();
       });
 
-    const freshHtml = buildHtmlWithModels([
-      {
-        slug: "fresh-frontier",
-        reasoning_model: true,
-        frontier_model: true,
-        short_name: "Fresh Frontier",
-        agentic_index: 80,
-        coding_index: 70,
-        price_1m_blended_3_to_1: 1.0,
-      },
-    ]);
-    fetchWithTimeout.mockResolvedValue(
-      new Response(freshHtml, { status: 200 }),
-    );
+    const freshHtml = buildHtmlWithModels([freshFrontierRawModel()]);
+    mockHtmlResponse(fetchWithTimeout, freshHtml);
 
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
-
-    expect(result).toContainEqual(
-      expect.objectContaining({ slug: "fresh-frontier", frontierModel: true }),
-    );
+    expectFreshFrontier(await getModelsFromClient(ArtificialAnalysisClient));
   });
 
   it("fails when refreshed models still have no rankable frontier model", async () => {
-    const staleModels: ArtificialAnalysisModel[] = [
-      {
-        slug: "stale-model",
-        model: "Stale Model",
-        reasoningModel: true,
-        frontierModel: false,
-        agentic: 75,
-        coding: 62,
-        blendedPrice: 0.5,
-        inputPrice: 0.3,
-        outputPrice: 0.7,
-        intelligenceIndexOutputTokens: null,
-      },
-    ];
+    const staleModels: ArtificialAnalysisModel[] = [staleModel()];
 
     const { ArtificialAnalysisClient, fetchWithTimeout } =
       await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
@@ -784,9 +720,7 @@ describe("ArtificialAnalysisClient", () => {
               price_1m_blended_3_to_1: 1.0,
             },
           ]);
-          fetchWithTimeout.mockResolvedValue(
-            new Response(freshHtml, { status: 200 }),
-          );
+          mockHtmlResponse(fetchWithTimeout, freshHtml);
           const freshResult = await fetcher();
           if (!validator(freshResult)) {
             throw new Error("Fresh value failed validation for key: ai:models");
@@ -835,7 +769,7 @@ describe("ArtificialAnalysisClient", () => {
         coding_index: 70,
       },
     ]);
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+    mockHtmlResponse(fetchWithTimeout, html);
 
     const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
     const result = await client.getModels();
@@ -862,35 +796,15 @@ describe("ArtificialAnalysisClient", () => {
     const { ArtificialAnalysisClient, fetchWithTimeout } =
       await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
         if (validator(staleModels)) return staleModels;
-        const freshHtml = buildHtmlWithModels([
-          {
-            slug: "fresh-frontier",
-            reasoning_model: true,
-            frontier_model: true,
-            short_name: "Fresh Frontier",
-            agentic_index: 80,
-            coding_index: 70,
-            price_1m_blended_3_to_1: 1.0,
-          },
-        ]);
-        fetchWithTimeout.mockResolvedValue(
-          new Response(freshHtml, { status: 200 }),
-        );
+        const freshHtml = buildHtmlWithModels([freshFrontierRawModel()]);
+        mockHtmlResponse(fetchWithTimeout, freshHtml);
         return fetcher();
       });
 
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
-
-    expect(result).toContainEqual(
-      expect.objectContaining({ slug: "fresh-frontier", frontierModel: true }),
-    );
+    expectFreshFrontier(await getModelsFromClient(ArtificialAnalysisClient));
   });
 
   it("fills scores from embedded performance data into metadata models by slug", async () => {
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const metadataModels = [
       {
         slug: "gpt-5-5-medium",
@@ -927,37 +841,9 @@ describe("ArtificialAnalysisClient", () => {
       "</body>",
       `<script>${embeddedPayload}</script></body>`,
     );
-    fetchWithTimeout.mockResolvedValue(
-      new Response(htmlWithEmbedded, { status: 200 }),
-    );
+    const result = await parseModelsFromHtml(htmlWithEmbedded);
 
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
-
-    expect(result).toContainEqual({
-      slug: "gpt-5-5-medium",
-      model: "GPT-5.5 (medium)",
-      reasoningModel: false,
-      frontierModel: true,
-      agentic: 69.39,
-      coding: 56.21,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
-      intelligenceIndexOutputTokens: null,
-    });
-    expect(result).toContainEqual({
-      slug: "gpt-5-5",
-      model: "GPT-5.5 (xhigh)",
-      reasoningModel: true,
-      frontierModel: true,
-      agentic: 74.12,
-      coding: 59.12,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
-      intelligenceIndexOutputTokens: null,
-    });
+    expectGpt55PerformanceModels(result, true);
   });
 
   it("treats missing frontier_model as not frontier after merge", async () => {
@@ -969,9 +855,6 @@ describe("ArtificialAnalysisClient", () => {
       },
     ];
 
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient();
-
     const html = buildHtmlWithSeparateChunks(
       [
         {
@@ -982,10 +865,7 @@ describe("ArtificialAnalysisClient", () => {
       ],
       performanceData,
     );
-    fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
-
-    const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
-    const result = await client.getModels();
+    const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual(
       expect.objectContaining({
