@@ -69,7 +69,6 @@ function expectEfficientModelFirst(
   ranking: Awaited<ReturnType<ModelRankingService["getRanking"]>>,
 ) {
   expect(ranking[0].model).toBe("Model Efficient");
-  expect(ranking[0].position).toBe(1);
 }
 
 describe("ModelRankingService", () => {
@@ -120,13 +119,11 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model B",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Model A",
-        position: 2,
         score: 78.13,
         tokensPerSecond: null,
       },
@@ -215,19 +212,16 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model A",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Model A",
-        position: 2,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Model B",
-        position: 3,
         score: 91.43,
         tokensPerSecond: null,
       },
@@ -296,13 +290,11 @@ describe("ModelRankingService", () => {
 
     expect(modelXA).toEqual({
       model: "Model X",
-      position: 2,
       score: 98.67,
       tokensPerSecond: null,
     });
     expect(modelXB).toEqual({
       model: "Model X",
-      position: 2,
       score: 98.67,
       tokensPerSecond: null,
     });
@@ -325,7 +317,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model A",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -356,12 +347,10 @@ describe("ModelRankingService", () => {
     expect(ranking).toHaveLength(30);
     expect(ranking[0]).toMatchObject({
       model: "Model 1",
-      position: 1,
       score: 100,
     });
     expect(ranking[29]).toMatchObject({
       model: "Model 30",
-      position: 30,
       score: 71,
     });
   });
@@ -401,7 +390,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model B",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -421,7 +409,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model A",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -459,13 +446,11 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Frontier Non-Reasoning",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Frontier Reasoning",
-        position: 2,
         score: 80,
         tokensPerSecond: null,
       },
@@ -507,7 +492,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Frontier Model",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -563,13 +547,11 @@ describe("ModelRankingService", () => {
     expect(ranking).toEqual([
       {
         model: "Frontier Expensive",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Frontier Cheap",
-        position: 2,
         score: 62.5,
         tokensPerSecond: null,
       },
@@ -644,12 +626,10 @@ describe("ModelRankingService", () => {
 
     expect(ranking[0]).toMatchObject({
       model: "Model A",
-      position: 1,
       score: 100,
     });
     expect(ranking[1]).toMatchObject({
       model: "Model B",
-      position: 2,
       score: 99.98,
     });
   });
@@ -663,7 +643,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "GPT-5.5",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -692,20 +671,18 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "GPT-5.5",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Gemini 2 Pro",
-        position: 2,
         score: 86.84,
         tokensPerSecond: null,
       },
     ]);
   });
 
-  it("ranks next model at position 1 when top model is excluded", async () => {
+  it("ranks next model first when top model is excluded", async () => {
     const artificialAnalysisClient = {
       getModels: vi
         .fn()
@@ -717,7 +694,6 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "GPT-5.5",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
@@ -753,13 +729,11 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       {
         model: "Model A",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },
       {
         model: "Model B",
-        position: 2,
         score: 90,
         tokensPerSecond: null,
       },
@@ -851,9 +825,7 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking[0].model).toBe("Model B");
-    expect(ranking[0].position).toBe(1);
     expect(ranking[1].model).toBe("Model A");
-    expect(ranking[1].position).toBe(2);
   });
 
   it("uses efficiency to break equal final-score ties", async () => {
@@ -882,7 +854,6 @@ describe("ModelRankingService", () => {
     expect(ranking).toEqual([
       {
         model: "Model With Speed",
-        position: 1,
         score: 100,
         tokensPerSecond: 114,
       },
@@ -905,7 +876,6 @@ describe("ModelRankingService", () => {
     expect(ranking).toEqual([
       {
         model: "Model No Speed",
-        position: 1,
         score: 100,
         tokensPerSecond: null,
       },

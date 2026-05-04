@@ -7,7 +7,6 @@ interface ModelRankingServiceMock {
   getRanking: () => Promise<
     Array<{
       model: string;
-      position: number;
       score: number;
       tokensPerSecond: number | null;
     }>
@@ -30,13 +29,11 @@ describe("rankingRoutes", () => {
       getRanking: vi.fn().mockResolvedValue([
         {
           model: "Model B",
-          position: 1,
           score: 100,
           tokensPerSecond: 114,
         },
         {
           model: "Model A",
-          position: 2,
           score: 91,
           tokensPerSecond: null,
         },
@@ -54,13 +51,11 @@ describe("rankingRoutes", () => {
     expect(response.json()).toEqual([
       {
         model: "Model B",
-        position: 1,
         score: 100,
         tokensPerSecond: 114,
       },
       {
         model: "Model A",
-        position: 2,
         score: 91,
         tokensPerSecond: null,
       },

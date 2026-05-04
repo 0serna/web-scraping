@@ -152,9 +152,8 @@ export class ModelRankingService {
 
     const topFinalInternalScore = rankedModels[0].finalInternalScore;
 
-    return rankedModels.map((entry, index) => ({
+    return rankedModels.map((entry) => ({
       model: entry.model,
-      position: index + 1,
       score: Number(
         ((entry.finalInternalScore / topFinalInternalScore) * 100).toFixed(2),
       ),
