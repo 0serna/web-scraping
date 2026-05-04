@@ -1,5 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ArtificialAnalysisModel } from "../types/ranking.js";
 import { ModelRankingService } from "./model-ranking-service.js";
+
+function rankingModel(
+  overrides: Partial<ArtificialAnalysisModel> &
+    Pick<ArtificialAnalysisModel, "slug" | "model" | "agentic" | "coding">,
+): ArtificialAnalysisModel {
+  return {
+    reasoningModel: false,
+    frontierModel: true,
+    blendedPrice: null,
+    inputPrice: null,
+    outputPrice: null,
+    intelligenceIndexOutputTokens: null,
+    ...overrides,
+  };
+}
 
 describe("ModelRankingService", () => {
   it("filters models without required fields and ranks by base score", async () => {
@@ -14,6 +30,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.375,
           inputPrice: 0.25,
           outputPrice: 0.75,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -24,6 +41,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.375,
           inputPrice: 0.25,
           outputPrice: 0.75,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-c",
@@ -34,6 +52,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: 0.15,
           outputPrice: 0.6,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -66,6 +85,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -76,6 +96,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -99,6 +120,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-a-smart",
@@ -109,6 +131,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.75,
           inputPrice: 0.5,
           outputPrice: 1.5,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -119,6 +142,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.125,
           inputPrice: 0.1,
           outputPrice: 0.2,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -155,6 +179,7 @@ describe("ModelRankingService", () => {
         blendedPrice: 0.125,
         inputPrice: 0.1,
         outputPrice: 0.2,
+        intelligenceIndexOutputTokens: null,
       },
       {
         slug: "model-x-expensive",
@@ -165,6 +190,7 @@ describe("ModelRankingService", () => {
         blendedPrice: 0.325,
         inputPrice: 0.3,
         outputPrice: 0.4,
+        intelligenceIndexOutputTokens: null,
       },
       {
         slug: "model-y",
@@ -175,6 +201,7 @@ describe("ModelRankingService", () => {
         blendedPrice: 0.525,
         inputPrice: 0.5,
         outputPrice: 0.6,
+        intelligenceIndexOutputTokens: null,
       },
     ];
 
@@ -223,6 +250,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.2625,
           inputPrice: 0.15,
           outputPrice: 0.6,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -250,6 +278,7 @@ describe("ModelRankingService", () => {
         blendedPrice: 0.5,
         inputPrice: 0.5,
         outputPrice: 1.25,
+        intelligenceIndexOutputTokens: null,
       };
     });
 
@@ -285,6 +314,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -295,6 +325,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -322,6 +353,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -350,6 +382,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "frontier-non-reasoning",
@@ -361,6 +394,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -393,6 +427,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "non-frontier-model",
@@ -403,6 +438,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -430,6 +466,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.1,
           inputPrice: 0.05,
           outputPrice: 0.2,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "frontier-expensive",
@@ -440,6 +477,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 10.0,
           inputPrice: 5.0,
           outputPrice: 20.0,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "non-frontier-cheap",
@@ -450,6 +488,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.01,
           inputPrice: 0.005,
           outputPrice: 0.02,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -484,6 +523,7 @@ describe("ModelRankingService", () => {
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -494,6 +534,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -517,6 +558,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.125,
           inputPrice: 0.1,
           outputPrice: 0.2,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -527,6 +569,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.2,
           inputPrice: null,
           outputPrice: null,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -549,26 +592,24 @@ describe("ModelRankingService", () => {
   it("excludes models with excluded slug prefix", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        {
+        rankingModel({
           slug: "claude-4-sonnet",
           model: "Claude 4 Sonnet",
-          frontierModel: true,
           agentic: 90,
           coding: 80,
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-        },
-        {
+        }),
+        rankingModel({
           slug: "gpt-5-5",
           model: "GPT-5.5",
-          frontierModel: true,
           agentic: 70,
           coding: 60,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
-        },
+        }),
       ]),
     };
 
@@ -586,36 +627,33 @@ describe("ModelRankingService", () => {
   it("excludes claude models but keeps other frontier models", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        {
+        rankingModel({
           slug: "claude-4-sonnet",
           model: "Claude 4 Sonnet",
-          frontierModel: true,
           agentic: 90,
           coding: 80,
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-        },
-        {
+        }),
+        rankingModel({
           slug: "gemini-2-pro",
           model: "Gemini 2 Pro",
-          frontierModel: true,
           agentic: 70,
           coding: 60,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
-        },
-        {
+        }),
+        rankingModel({
           slug: "gpt-5-5",
           model: "GPT-5.5",
-          frontierModel: true,
           agentic: 80,
           coding: 70,
           blendedPrice: 0.3,
           inputPrice: 0.2,
           outputPrice: 0.5,
-        },
+        }),
       ]),
     };
 
@@ -638,26 +676,24 @@ describe("ModelRankingService", () => {
   it("ranks next model at position 1 when top model is excluded", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        {
+        rankingModel({
           slug: "claude-4-sonnet",
           model: "Claude 4 Sonnet",
-          frontierModel: true,
           agentic: 100,
           coding: 100,
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-        },
-        {
+        }),
+        rankingModel({
           slug: "gpt-5-5",
           model: "GPT-5.5",
-          frontierModel: true,
           agentic: 70,
           coding: 60,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
-        },
+        }),
       ]),
     };
 
@@ -684,6 +720,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0,
           inputPrice: 0,
           outputPrice: 0,
+          intelligenceIndexOutputTokens: null,
         },
         {
           slug: "model-b",
@@ -694,6 +731,7 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.625,
           inputPrice: 0.5,
           outputPrice: 1,
+          intelligenceIndexOutputTokens: null,
         },
       ]),
     };
@@ -712,5 +750,138 @@ describe("ModelRankingService", () => {
         score: 90,
       },
     ]);
+  });
+
+  it("promotes token-efficient model above higher base-score model", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        rankingModel({
+          slug: "model-high-base",
+          model: "Model High Base",
+          agentic: 90,
+          coding: 80,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+          intelligenceIndexOutputTokens: 50000,
+        }),
+        rankingModel({
+          slug: "model-efficient",
+          model: "Model Efficient",
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.25,
+          inputPrice: 0.15,
+          outputPrice: 0.3,
+          intelligenceIndexOutputTokens: 10000,
+        }),
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const ranking = await service.getRanking();
+
+    expect(ranking[0].model).toBe("Model Efficient");
+    expect(ranking[0].position).toBe(1);
+    expect(ranking[0].score).toBe(100);
+  });
+
+  it("keeps models with missing output-token data rankable with no efficiency bonus", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        rankingModel({
+          slug: "model-with-tokens",
+          model: "Model With Tokens",
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+          intelligenceIndexOutputTokens: 20000,
+        }),
+        rankingModel({
+          slug: "model-no-tokens",
+          model: "Model No Tokens",
+          agentic: 90,
+          coding: 80,
+          blendedPrice: 0.25,
+          inputPrice: 0.15,
+          outputPrice: 0.3,
+        }),
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const ranking = await service.getRanking();
+
+    expect(ranking).toHaveLength(2);
+    expect(ranking.map((r) => r.model)).toContain("Model No Tokens");
+    expect(ranking.map((r) => r.model)).toContain("Model With Tokens");
+  });
+
+  it("preserves base ranking when no model has valid token data", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        rankingModel({
+          slug: "model-a",
+          model: "Model A",
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+        }),
+        rankingModel({
+          slug: "model-b",
+          model: "Model B",
+          agentic: 90,
+          coding: 80,
+          blendedPrice: 0.25,
+          inputPrice: 0.15,
+          outputPrice: 0.3,
+        }),
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const ranking = await service.getRanking();
+
+    expect(ranking[0].model).toBe("Model B");
+    expect(ranking[0].position).toBe(1);
+    expect(ranking[1].model).toBe("Model A");
+    expect(ranking[1].position).toBe(2);
+  });
+
+  it("uses efficiency to break equal final-score ties", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        rankingModel({
+          slug: "model-efficient",
+          model: "Model Efficient",
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+          intelligenceIndexOutputTokens: 10000,
+        }),
+        rankingModel({
+          slug: "model-inefficient",
+          model: "Model Inefficient",
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.25,
+          inputPrice: 0.15,
+          outputPrice: 0.3,
+          intelligenceIndexOutputTokens: 50000,
+        }),
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+    const ranking = await service.getRanking();
+
+    expect(ranking[0].model).toBe("Model Efficient");
+    expect(ranking[0].position).toBe(1);
   });
 });

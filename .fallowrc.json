@@ -4,5 +4,8 @@
     "getPriceByTicker",
     "getGameInfoByAppId",
     { "implements": "Cache", "members": ["getOrFetch"] }
-  ]
+  ],
+  "duplicates": {
+    "threshold": 15
+  }
 }

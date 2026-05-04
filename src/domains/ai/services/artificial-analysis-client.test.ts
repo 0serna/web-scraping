@@ -87,6 +87,33 @@ async function loadArtificialAnalysisClient(
   };
 }
 
+async function parseModelsFromHtml(
+  html: string,
+): Promise<ArtificialAnalysisModel[]> {
+  const { ArtificialAnalysisClient, fetchWithTimeout } =
+    await loadArtificialAnalysisClient();
+
+  fetchWithTimeout.mockResolvedValue(new Response(html, { status: 200 }));
+
+  const client = new ArtificialAnalysisClient({ child: vi.fn() } as never);
+  return client.getModels();
+}
+
+function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
+  return {
+    slug,
+    short_name: slug
+      .split("-")
+      .map((part) => part[0].toUpperCase() + part.slice(1))
+      .join(" "),
+    frontier_model: true,
+    agentic_index: 80,
+    coding_index: 70,
+    intelligence_index_token_counts:
+      outputTokens === undefined ? undefined : { output_tokens: outputTokens },
+  };
+}
+
 describe("ArtificialAnalysisClient", () => {
   it("parses models from next flight payload", async () => {
     const { ArtificialAnalysisClient, fetchWithTimeout, getOrFetchValidated } =
@@ -102,6 +129,9 @@ describe("ArtificialAnalysisClient", () => {
         price_1m_blended_3_to_1: 0.2625,
         price_1m_input_tokens: 0.15,
         price_1m_output_tokens: 0.6,
+        intelligence_index_token_counts: {
+          output_tokens: 15000,
+        },
       },
       {
         slug: "model-b",
@@ -126,6 +156,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: 0.2625,
         inputPrice: 0.15,
         outputPrice: 0.6,
+        intelligenceIndexOutputTokens: 15000,
       },
       {
         slug: "model-b",
@@ -137,6 +168,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,
+        intelligenceIndexOutputTokens: null,
       },
     ]);
 
@@ -184,6 +216,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: 1.5,
         inputPrice: null,
         outputPrice: null,
+        intelligenceIndexOutputTokens: null,
       },
     ]);
   });
@@ -223,6 +256,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
     expect(result).toContainEqual({
       slug: "gpt-5-5",
@@ -234,6 +268,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -315,6 +350,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 1.6875,
       inputPrice: 0.75,
       outputPrice: 4.5,
+      intelligenceIndexOutputTokens: null,
     });
 
     // Second model should have metadata but no performance data
@@ -328,6 +364,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -370,6 +407,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 1.0,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
 
     expect(result).toContainEqual({
@@ -382,6 +420,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 2.0,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -418,6 +457,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,
+        intelligenceIndexOutputTokens: null,
       },
     ]);
   });
@@ -480,6 +520,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 1.6875,
       inputPrice: 0.75,
       outputPrice: 4.5,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -523,6 +564,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 1.0,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
 
     expect(result).toContainEqual({
@@ -535,6 +577,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 0.5,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -599,6 +642,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: 1.6875,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -656,6 +700,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -671,6 +716,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: 0.5,
         inputPrice: 0.3,
         outputPrice: 0.7,
+        intelligenceIndexOutputTokens: null,
       },
     ];
 
@@ -720,6 +766,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: 0.5,
         inputPrice: 0.3,
         outputPrice: 0.7,
+        intelligenceIndexOutputTokens: null,
       },
     ];
 
@@ -768,6 +815,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,
+        intelligenceIndexOutputTokens: null,
       },
     ];
 
@@ -807,6 +855,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,
+        intelligenceIndexOutputTokens: null,
       },
     ];
 
@@ -895,6 +944,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
     expect(result).toContainEqual({
       slug: "gpt-5-5",
@@ -906,6 +956,7 @@ describe("ArtificialAnalysisClient", () => {
       blendedPrice: null,
       inputPrice: null,
       outputPrice: null,
+      intelligenceIndexOutputTokens: null,
     });
   });
 
@@ -940,6 +991,103 @@ describe("ArtificialAnalysisClient", () => {
       expect.objectContaining({
         slug: "no-frontier-flag",
         frontierModel: false,
+      }),
+    );
+  });
+
+  it("parses intelligence_index_token_counts.output_tokens from model objects", async () => {
+    const html = buildHtmlWithModels([
+      modelWithTokenCounts("model-with-tokens", 25000),
+    ]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-with-tokens",
+        intelligenceIndexOutputTokens: 25000,
+      }),
+    );
+  });
+
+  it("returns null for missing intelligence_index_token_counts", async () => {
+    const html = buildHtmlWithModels([modelWithTokenCounts("model-no-tokens")]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-no-tokens",
+        intelligenceIndexOutputTokens: null,
+      }),
+    );
+  });
+
+  it.each([
+    ["model-invalid-tokens", Infinity],
+    ["model-zero-tokens", 0],
+    ["model-negative-tokens", -100],
+  ])("returns null for invalid output_tokens: %s", async (slug, tokens) => {
+    const html = buildHtmlWithModels([modelWithTokenCounts(slug, tokens)]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug,
+        intelligenceIndexOutputTokens: null,
+      }),
+    );
+  });
+
+  it("merges output token counts by slug from performance data", async () => {
+    const metadataModels = [
+      {
+        slug: "model-merge",
+        name: "Model Merge",
+        isReasoning: true,
+      },
+    ];
+
+    const performanceModels = [
+      {
+        slug: "model-merge",
+        frontier_model: true,
+        coding_index: 51.48,
+        agentic_index: 55.66,
+        intelligence_index_token_counts: {
+          output_tokens: 18000,
+        },
+      },
+    ];
+
+    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-merge",
+        intelligenceIndexOutputTokens: 18000,
+      }),
+    );
+  });
+
+  it("merges output token counts from embedded performance data", async () => {
+    const html = buildHtmlWithEmbeddedPerformanceModels([
+      {
+        slug: "embedded-tokens",
+        short_name: "Embedded Tokens",
+        frontier_model: true,
+        agentic_index: 74.12,
+        coding_index: 59.12,
+        intelligence_index_token_counts: {
+          output_tokens: 30000,
+        },
+      },
+    ]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "embedded-tokens",
+        intelligenceIndexOutputTokens: 30000,
       }),
     );
   });

@@ -99,14 +99,16 @@ function extractNextFlightPayloadChunks(html: string): string[] {
   const chunks: string[] = [];
   const chunkRegex = new RegExp(NEXT_FLIGHT_CHUNK_PATTERN, "g");
 
-  let chunkMatch: RegExpExecArray | null;
-  while ((chunkMatch = chunkRegex.exec(html)) !== null) {
+  let chunkMatch = chunkRegex.exec(html);
+  while (chunkMatch !== null) {
     const rawChunk = chunkMatch[1] ?? "";
     try {
       chunks.push(JSON.parse(`"${rawChunk}"`) as string);
     } catch {
       // Ignore malformed chunks and continue scanning.
     }
+
+    chunkMatch = chunkRegex.exec(html);
   }
 
   return chunks;
@@ -119,6 +121,13 @@ function resolveModelName(rawModel: RawArtificialAnalysisModel): string | null {
 
 function resolveNumericField(value: unknown): number | null {
   return isFiniteNumber(value) ? value : null;
+}
+
+function resolveOutputTokens(raw: RawArtificialAnalysisModel): number | null {
+  const tokenCounts = raw.intelligence_index_token_counts;
+  if (!tokenCounts || typeof tokenCounts !== "object") return null;
+  const value = tokenCounts.output_tokens;
+  return isFiniteNumber(value) && value > 0 ? value : null;
 }
 
 function normalizeModel(
@@ -141,6 +150,7 @@ function normalizeModel(
     blendedPrice: resolveNumericField(rawModel.price_1m_blended_3_to_1),
     inputPrice: resolveNumericField(rawModel.price_1m_input_tokens),
     outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
+    intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
   };
 }
 
@@ -150,18 +160,20 @@ function extractModelsFromModelsArray(
   const models: ArtificialAnalysisModel[] = [];
   const modelsKeyRegex = new RegExp(MODELS_KEY_PATTERN, "g");
 
-  let modelKeyMatch: RegExpExecArray | null;
-  while ((modelKeyMatch = modelsKeyRegex.exec(decodedChunk)) !== null) {
+  let modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
+  while (modelKeyMatch !== null) {
     const arrayStartIndex = modelKeyMatch.index + modelKeyMatch[0].length - 1;
     const arrayText = extractJsonArrayText(decodedChunk, arrayStartIndex);
 
     if (!arrayText) {
+      modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
       continue;
     }
 
     try {
       const parsed = JSON.parse(arrayText) as unknown;
       if (!Array.isArray(parsed)) {
+        modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
         continue;
       }
 
@@ -176,6 +188,8 @@ function extractModelsFromModelsArray(
     } catch {
       // Ignore malformed model arrays and continue scanning.
     }
+
+    modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
   }
 
   return models;
@@ -207,6 +221,7 @@ function toPerformanceData(
     blendedPrice: resolveNumericField(raw.price_1m_blended_3_to_1),
     inputPrice: resolveNumericField(raw.price_1m_input_tokens),
     outputPrice: resolveNumericField(raw.price_1m_output_tokens),
+    intelligenceIndexOutputTokens: resolveOutputTokens(raw),
   };
 }
 
@@ -216,21 +231,29 @@ function extractPerformanceDataFromChunk(
   const models: PerformanceData[] = [];
   const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
 
-  let match: RegExpExecArray | null;
-  while ((match = performanceRegex.exec(decodedChunk)) !== null) {
+  let match = performanceRegex.exec(decodedChunk);
+  while (match !== null) {
     const objectStartIndex = findObjectStart(decodedChunk, match.index);
     const objectText = extractJsonObjectText(decodedChunk, objectStartIndex);
-    if (!objectText) continue;
+    if (!objectText) {
+      match = performanceRegex.exec(decodedChunk);
+      continue;
+    }
 
     try {
       const parsed = JSON.parse(objectText) as unknown;
-      if (typeof parsed !== "object" || parsed === null) continue;
+      if (typeof parsed !== "object" || parsed === null) {
+        match = performanceRegex.exec(decodedChunk);
+        continue;
+      }
 
       const entry = toPerformanceData(parsed as RawArtificialAnalysisModel);
       if (entry) models.push(entry);
     } catch {
       // Ignore malformed objects and continue scanning.
     }
+
+    match = performanceRegex.exec(decodedChunk);
   }
 
   return models;
@@ -242,21 +265,29 @@ function extractModelsFromPerformanceObjects(
   const models: ArtificialAnalysisModel[] = [];
   const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
 
-  let match: RegExpExecArray | null;
-  while ((match = performanceRegex.exec(source)) !== null) {
+  let match = performanceRegex.exec(source);
+  while (match !== null) {
     const objectStartIndex = findObjectStart(source, match.index);
     const objectText = extractJsonObjectText(source, objectStartIndex);
-    if (!objectText) continue;
+    if (!objectText) {
+      match = performanceRegex.exec(source);
+      continue;
+    }
 
     try {
       const parsed = JSON.parse(objectText) as unknown;
-      if (typeof parsed !== "object" || parsed === null) continue;
+      if (typeof parsed !== "object" || parsed === null) {
+        match = performanceRegex.exec(source);
+        continue;
+      }
 
       const entry = normalizeModel(parsed as RawArtificialAnalysisModel);
       if (entry) models.push(entry);
     } catch {
       // Ignore malformed objects and continue scanning.
     }
+
+    match = performanceRegex.exec(source);
   }
 
   return models;
@@ -285,6 +316,34 @@ function uniqueModelsBySlug(
   return uniqueModels;
 }
 
+interface PerformanceFields {
+  frontierModel: boolean;
+  coding: number | null;
+  agentic: number | null;
+  blendedPrice: number | null;
+  inputPrice: number | null;
+  outputPrice: number | null;
+  intelligenceIndexOutputTokens: number | null;
+}
+
+function mergePerformanceFields<T extends ArtificialAnalysisModel>(
+  model: T,
+  source: PerformanceFields,
+): T {
+  return {
+    ...model,
+    frontierModel: source.frontierModel ?? model.frontierModel,
+    coding: source.coding ?? model.coding,
+    agentic: source.agentic ?? model.agentic,
+    blendedPrice: source.blendedPrice ?? model.blendedPrice,
+    inputPrice: source.inputPrice ?? model.inputPrice,
+    outputPrice: source.outputPrice ?? model.outputPrice,
+    intelligenceIndexOutputTokens:
+      source.intelligenceIndexOutputTokens ??
+      model.intelligenceIndexOutputTokens,
+  };
+}
+
 function mergeModelData(
   metadataModels: ArtificialAnalysisModel[],
   performanceData: PerformanceData[],
@@ -297,19 +356,7 @@ function mergeModelData(
 
   return metadataModels.map((metaModel) => {
     const perf = performanceBySlug.get(metaModel.slug);
-    if (!perf) {
-      return metaModel;
-    }
-
-    return {
-      ...metaModel,
-      frontierModel: perf.frontierModel ?? metaModel.frontierModel,
-      coding: perf.coding ?? metaModel.coding,
-      agentic: perf.agentic ?? metaModel.agentic,
-      blendedPrice: perf.blendedPrice ?? metaModel.blendedPrice,
-      inputPrice: perf.inputPrice ?? metaModel.inputPrice,
-      outputPrice: perf.outputPrice ?? metaModel.outputPrice,
-    };
+    return perf ? mergePerformanceFields(metaModel, perf) : metaModel;
   });
 }
 
@@ -321,16 +368,7 @@ function mergeEmbeddedIntoModels(
 
   const merged = models.map((model) => {
     const source = embeddedBySlug.get(model.slug);
-    if (!source) return model;
-    return {
-      ...model,
-      frontierModel: source.frontierModel ?? model.frontierModel,
-      coding: source.coding ?? model.coding,
-      agentic: source.agentic ?? model.agentic,
-      blendedPrice: source.blendedPrice ?? model.blendedPrice,
-      inputPrice: source.inputPrice ?? model.inputPrice,
-      outputPrice: source.outputPrice ?? model.outputPrice,
-    };
+    return source ? mergePerformanceFields(model, source) : model;
   });
 
   const knownSlugs = new Set(merged.map((m) => m.slug));

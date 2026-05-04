@@ -8,6 +8,7 @@ export interface ArtificialAnalysisModel {
   blendedPrice: number | null;
   inputPrice: number | null;
   outputPrice: number | null;
+  intelligenceIndexOutputTokens: number | null;
 }
 
 export interface RankedModel {
@@ -29,6 +30,9 @@ export interface RawArtificialAnalysisModel {
   price_1m_blended_3_to_1?: number;
   price_1m_input_tokens?: number;
   price_1m_output_tokens?: number;
+  intelligence_index_token_counts?: {
+    output_tokens?: number;
+  };
 }
 
 export interface PerformanceData {
@@ -39,4 +43,5 @@ export interface PerformanceData {
   blendedPrice: number | null;
   inputPrice: number | null;
   outputPrice: number | null;
+  intelligenceIndexOutputTokens: number | null;
 }
