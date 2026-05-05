@@ -20,6 +20,7 @@
 
 ## Repository Commands
 
+- `npm install`: install dependencies.
 - `npm run dev`: run dev server with file watching.
 - `npm run build`: compile TypeScript to dist/.
 - `npm run format`: format all files with Prettier.
