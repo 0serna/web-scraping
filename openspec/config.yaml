@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Node.js 22+, TypeScript, Fastify, Vitest, Biome
+  Tech stack: Node.js 22+, TypeScript, Fastify, Vitest, Prettier and ESLint
   Domain-driven architecture: src/domains/ with routes, services, types
 
   For validation always use DevTools or Playwriter to navigate, snapshot,
@@ -10,7 +10,7 @@ context: |
 rules:
   proposal:
     - Identify affected domain(s)
-    - Take into account the project documentation `docs/`
+    - Consult existing OpenSpec specs for architectural context
   tasks:
     - Add tests for each scenario
     - After implementing changes, run `npm run check` to validate
