@@ -2,8 +2,8 @@ import { AiParseError } from "../types/errors.js";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
-const WEIGHT_INTELLIGENCE_CODING = 0.4;
+const WEIGHT_INTELLIGENCE_AGENTIC = 0.7;
+const WEIGHT_INTELLIGENCE_CODING = 0.3;
 const RECENT_MODEL_WINDOW_DAYS = 90;
 const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
@@ -128,9 +128,7 @@ export class ModelRankingService {
     return rankedModels.map((entry) => ({
       model: entry.model,
       date: entry.date,
-      score: Number(
-        ((entry.internalScore / topInternalScore) * 100).toFixed(2),
-      ),
+      score: Math.round((entry.internalScore / topInternalScore) * 100),
       speed: entry.speed,
       output: entry.output,
     }));

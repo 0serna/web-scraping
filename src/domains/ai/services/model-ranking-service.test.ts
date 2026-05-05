@@ -130,7 +130,7 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({ model: "Model B", score: 100 }),
-      rankedModel({ model: "Model A", score: 78.13 }),
+      rankedModel({ model: "Model A", score: 74 }),
     ]);
   });
 
@@ -226,14 +226,14 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Model A",
-        score: 100,
+        score: 93,
         speed: null,
         output: null,
         date: null,
       },
       {
         model: "Model B",
-        score: 91.43,
+        score: 91,
         speed: null,
         output: null,
         date: null,
@@ -306,14 +306,14 @@ describe("ModelRankingService", () => {
 
     expect(modelXA).toEqual({
       model: "Model X",
-      score: 98.67,
+      score: 100,
       speed: null,
       output: null,
       date: null,
     });
     expect(modelXB).toEqual({
       model: "Model X",
-      score: 98.67,
+      score: 100,
       speed: null,
       output: null,
       date: null,
@@ -477,7 +477,7 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Reasoning Frontier",
-        score: 80,
+        score: 81,
         speed: null,
         output: null,
         date: null,
@@ -589,7 +589,7 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Reasoning Cheap",
-        score: 62.5,
+        score: 63,
         speed: null,
         output: null,
         date: null,
@@ -673,7 +673,7 @@ describe("ModelRankingService", () => {
     });
     expect(ranking[1]).toMatchObject({
       model: "Model B",
-      score: 99.98,
+      score: 100,
     });
   });
 
@@ -723,7 +723,7 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Gemini 2 Pro",
-        score: 86.84,
+        score: 87,
         speed: null,
         output: null,
         date: null,
@@ -829,7 +829,7 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Model Efficient",
-        score: 88.37,
+        score: 89,
         speed: null,
         output: 10,
         date: null,
