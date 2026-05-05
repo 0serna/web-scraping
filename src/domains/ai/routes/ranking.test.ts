@@ -9,6 +9,7 @@ interface ModelRankingServiceMock {
       model: string;
       score: number;
       tokensPerSecond: number | null;
+      outputTokensMillions: number | null;
     }>
   >;
 }
@@ -31,11 +32,13 @@ describe("rankingRoutes", () => {
           model: "Model B",
           score: 100,
           tokensPerSecond: 114,
+          outputTokensMillions: 25,
         },
         {
           model: "Model A",
           score: 91,
           tokensPerSecond: null,
+          outputTokensMillions: null,
         },
       ]),
     };
@@ -53,11 +56,13 @@ describe("rankingRoutes", () => {
         model: "Model B",
         score: 100,
         tokensPerSecond: 114,
+        outputTokensMillions: 25,
       },
       {
         model: "Model A",
         score: 91,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });

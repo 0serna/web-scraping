@@ -16,6 +16,7 @@ export interface RankedModel {
   model: string;
   score: number;
   tokensPerSecond: number | null;
+  outputTokensMillions: number | null;
 }
 
 export interface RawArtificialAnalysisModel {

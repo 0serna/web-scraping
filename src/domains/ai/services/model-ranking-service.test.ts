@@ -48,7 +48,7 @@ function gpt55Model(agentic = 70, coding = 60): ArtificialAnalysisModel {
   });
 }
 
-function tokenRankingModel(
+function outputTokenRankingModel(
   slug: string,
   model: string,
   outputTokens: number,
@@ -63,12 +63,6 @@ function tokenRankingModel(
     outputPrice: outputTokens < 20000 ? 0.3 : 0.7,
     intelligenceIndexOutputTokens: outputTokens,
   });
-}
-
-function expectEfficientModelFirst(
-  ranking: Awaited<ReturnType<ModelRankingService["getRanking"]>>,
-) {
-  expect(ranking[0].model).toBe("Model Efficient");
 }
 
 describe("ModelRankingService", () => {
@@ -121,11 +115,13 @@ describe("ModelRankingService", () => {
         model: "Model B",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Model A",
         score: 78.13,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -214,16 +210,19 @@ describe("ModelRankingService", () => {
         model: "Model A",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Model A",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Model B",
         score: 91.43,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -292,11 +291,13 @@ describe("ModelRankingService", () => {
       model: "Model X",
       score: 98.67,
       tokensPerSecond: null,
+      outputTokensMillions: null,
     });
     expect(modelXB).toEqual({
       model: "Model X",
       score: 98.67,
       tokensPerSecond: null,
+      outputTokensMillions: null,
     });
     expect(rankingA).toEqual(rankingB);
   });
@@ -319,6 +320,7 @@ describe("ModelRankingService", () => {
         model: "Model A",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -392,6 +394,7 @@ describe("ModelRankingService", () => {
         model: "Model B",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -411,6 +414,7 @@ describe("ModelRankingService", () => {
         model: "Model A",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -450,11 +454,13 @@ describe("ModelRankingService", () => {
         model: "Reasoning Non-Frontier",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Reasoning Frontier",
         score: 80,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -496,6 +502,7 @@ describe("ModelRankingService", () => {
         model: "Reasoning Model",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -551,11 +558,13 @@ describe("ModelRankingService", () => {
         model: "Reasoning Expensive",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Reasoning Cheap",
         score: 62.5,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -647,6 +656,7 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -675,11 +685,13 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Gemini 2 Pro",
         score: 86.84,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -698,6 +710,7 @@ describe("ModelRankingService", () => {
         model: "GPT-5.5",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -733,16 +746,18 @@ describe("ModelRankingService", () => {
         model: "Model A",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
       {
         model: "Model B",
         score: 90,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
 
-  it("promotes token-efficient model above higher base-score model", async () => {
+  it("does not promote token-efficient model above higher base-score model", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
@@ -753,16 +768,33 @@ describe("ModelRankingService", () => {
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
-          intelligenceIndexOutputTokens: 200000,
+          intelligenceIndexOutputTokens: 200_000_000,
         }),
-        tokenRankingModel("model-efficient", "Model Efficient", 10000),
+        outputTokenRankingModel(
+          "model-efficient",
+          "Model Efficient",
+          10_000_000,
+        ),
       ]),
     };
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expectEfficientModelFirst(ranking);
+    expect(ranking).toEqual([
+      {
+        model: "Model High Base",
+        score: 100,
+        tokensPerSecond: null,
+        outputTokensMillions: 200,
+      },
+      {
+        model: "Model Efficient",
+        score: 88.37,
+        tokensPerSecond: null,
+        outputTokensMillions: 10,
+      },
+    ]);
     expect(ranking[0].score).toBe(100);
   });
 
@@ -830,14 +862,81 @@ describe("ModelRankingService", () => {
     expect(ranking[1].model).toBe("Model A");
   });
 
-  it("uses efficiency to break equal final-score ties", async () => {
+  it("does not use output tokens to break equal-score ties", async () => {
     const service = createServiceForModels([
-      tokenRankingModel("model-efficient", "Model Efficient", 10000),
-      tokenRankingModel("model-inefficient", "Model Inefficient", 50000),
+      outputTokenRankingModel(
+        "model-inefficient",
+        "Model A Inefficient",
+        50_000_000,
+      ),
+      outputTokenRankingModel(
+        "model-efficient",
+        "Model B Efficient",
+        10_000_000,
+      ),
     ]);
     const ranking = await service.getRanking();
 
-    expectEfficientModelFirst(ranking);
+    expect(ranking).toEqual([
+      {
+        model: "Model A Inefficient",
+        score: 100,
+        tokensPerSecond: null,
+        outputTokensMillions: 50,
+      },
+      {
+        model: "Model B Efficient",
+        score: 100,
+        tokensPerSecond: null,
+        outputTokensMillions: 10,
+      },
+    ]);
+  });
+
+  it("includes rounded outputTokensMillions from source model in ranking", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-with-output-tokens",
+        model: "Model With Output Tokens",
+        agentic: 80,
+        coding: 70,
+        intelligenceIndexOutputTokens: 25_400_000,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "Model With Output Tokens",
+        score: 100,
+        tokensPerSecond: null,
+        outputTokensMillions: 25,
+      },
+    ]);
+  });
+
+  it("returns null outputTokensMillions when source model has no output-token data", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-no-output-tokens",
+        model: "Model No Output Tokens",
+        agentic: 80,
+        coding: 70,
+        intelligenceIndexOutputTokens: null,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "Model No Output Tokens",
+        score: 100,
+        tokensPerSecond: null,
+        outputTokensMillions: null,
+      },
+    ]);
   });
 
   it("includes tokensPerSecond from source model in ranking", async () => {
@@ -858,6 +957,7 @@ describe("ModelRankingService", () => {
         model: "Model With Speed",
         score: 100,
         tokensPerSecond: 114,
+        outputTokensMillions: null,
       },
     ]);
   });
@@ -880,6 +980,7 @@ describe("ModelRankingService", () => {
         model: "Model No Speed",
         score: 100,
         tokensPerSecond: null,
+        outputTokensMillions: null,
       },
     ]);
   });
