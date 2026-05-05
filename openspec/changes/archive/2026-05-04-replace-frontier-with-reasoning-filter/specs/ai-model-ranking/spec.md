@@ -1,10 +1,4 @@
-# ai-model-ranking Specification
-
-## Purpose
-
-Fetch and rank reasoning AI models from Artificial Analysis performance data, returning a relative score for each eligible model.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rank explicit reasoning models with coding and agentic scores
 
@@ -64,45 +58,6 @@ The system SHALL normalize Artificial Analysis' `reasoning_model` and `isReasoni
 - **WHEN** Artificial Analysis exposes additional model variants with coding and agentic scores but no explicit `reasoning_model: true` or `isReasoning: true` value that can be associated with those variants
 - **THEN** the system SHALL NOT infer reasoning status for those variants
 
-### Requirement: Return relative ranking scores
-
-The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the final internal score of the model at `position: 1`, where final internal score includes any configured token-efficiency bonus.
-
-#### Scenario: Top model score is 100
-
-- **WHEN** the system returns a successful AI model ranking
-- **THEN** the model at `position: 1` SHALL have `score` equal to 100
-
-#### Scenario: Lower-ranked scores are relative percentages
-
-- **WHEN** the system returns ranked models below `position: 1`
-- **THEN** each lower-ranked model's `score` SHALL equal its unrounded final internal score divided by the unrounded final internal score of the first-ranked model, multiplied by 100 and rounded for response output
-
-#### Scenario: Non-positive top internal score is invalid
-
-- **WHEN** the first-ranked model's final internal score is less than or equal to 0
-- **THEN** the system SHALL fail the ranking instead of returning relative scores
-
-#### Scenario: Price omitted from ranking order
-
-- **WHEN** multiple reasoning models have coding and agentic scores
-- **THEN** the system SHALL NOT use blended price to determine eligibility or ranking order
-
-#### Scenario: Ranking ties are deterministic
-
-- **WHEN** two reasoning models have equal final internal scores and equal token efficiency
-- **THEN** the system SHALL order them by agentic score descending, then coding score descending, then model name ascending
-
-### Requirement: Omit price from ranking response
-
-The system SHALL NOT include model price fields in successful AI model ranking response items.
-
-#### Scenario: Ranking response excludes price
-
-- **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `position`, `score`, and `tokensPerSecond`
-- **AND** each ranking item SHALL NOT include `price1m`
-
 ### Requirement: Exclude models by slug prefix before scoring
 
 The system SHALL apply the slug prefix exclusion filter after the reasoning model filter and before scoring when calculating the AI model ranking.
@@ -118,23 +73,3 @@ The system SHALL apply the slug prefix exclusion filter after the reasoning mode
 
 - **WHEN** the highest-scoring model has an excluded slug prefix
 - **THEN** the system SHALL rank the next non-excluded model at `position: 1` with `score: 100`
-
-### Requirement: Include tokens per second in ranking response
-
-The system SHALL include `tokensPerSecond` as an informational field on each ranked model in the AI model ranking response.
-
-#### Scenario: Tokens per second extracted from medium_coding prompt length
-
-- **WHEN** Artificial Analysis model data contains `performanceByPromptLength` with an entry where `prompt_length_type` is `"medium_coding"`
-- **THEN** the system SHALL extract `median_output_speed` from that entry and expose it as `tokensPerSecond` on the ranked model
-
-#### Scenario: Tokens per second is null when performance data missing
-
-- **WHEN** Artificial Analysis model data does not contain `performanceByPromptLength` or lacks a `"medium_coding"` entry
-- **THEN** the system SHALL set `tokensPerSecond` to `null` on the ranked model
-
-#### Scenario: Tokens per second does not affect ranking order
-
-- **WHEN** the system calculates ranking positions and scores
-- **THEN** the system SHALL NOT use `tokensPerSecond` to determine eligibility, ranking order, or score calculation
-- **AND** `tokensPerSecond` SHALL be purely informational in the response

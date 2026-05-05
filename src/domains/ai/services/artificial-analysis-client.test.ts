@@ -106,9 +106,9 @@ async function getModelsFromClient(
   return client.getModels();
 }
 
-function expectFreshFrontier(result: ArtificialAnalysisModel[]) {
+function expectFreshReasoning(result: ArtificialAnalysisModel[]) {
   expect(result).toContainEqual(
-    expect.objectContaining({ slug: "fresh-frontier", frontierModel: true }),
+    expect.objectContaining({ slug: "fresh-reasoning", reasoningModel: true }),
   );
 }
 
@@ -127,12 +127,12 @@ function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
   };
 }
 
-function freshFrontierRawModel(slug = "fresh-frontier"): unknown {
+function freshReasoningRawModel(slug = "fresh-reasoning"): unknown {
   return {
     slug,
     reasoning_model: true,
     frontier_model: true,
-    short_name: "Fresh Frontier",
+    short_name: "Fresh Reasoning",
     agentic_index: 80,
     coding_index: 70,
     price_1m_blended_3_to_1: 1.0,
@@ -143,7 +143,7 @@ function staleModel(overrides: Partial<ArtificialAnalysisModel> = {}) {
   return {
     slug: "stale-model",
     model: "Stale Model",
-    reasoningModel: true,
+    reasoningModel: false,
     frontierModel: false,
     agentic: 75,
     coding: 62,
@@ -699,7 +699,7 @@ describe("ArtificialAnalysisClient", () => {
     });
   });
 
-  it("refetches once when cached models have no rankable frontier model", async () => {
+  it("refetches once when cached models have no rankable reasoning model", async () => {
     const staleModels: ArtificialAnalysisModel[] = [staleModel()];
 
     let fetchCount = 0;
@@ -713,13 +713,13 @@ describe("ArtificialAnalysisClient", () => {
         return fetcher();
       });
 
-    const freshHtml = buildHtmlWithModels([freshFrontierRawModel()]);
+    const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
     mockHtmlResponse(fetchWithTimeout, freshHtml);
 
-    expectFreshFrontier(await getModelsFromClient(ArtificialAnalysisClient));
+    expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
   });
 
-  it("fails when refreshed models still have no rankable frontier model", async () => {
+  it("fails when refreshed models still have no rankable reasoning model", async () => {
     const staleModels: ArtificialAnalysisModel[] = [staleModel()];
 
     const { ArtificialAnalysisClient, fetchWithTimeout } =
@@ -727,10 +727,10 @@ describe("ArtificialAnalysisClient", () => {
         if (!validator(staleModels)) {
           const freshHtml = buildHtmlWithModels([
             {
-              slug: "fresh-no-frontier",
-              reasoning_model: true,
+              slug: "fresh-no-reasoning",
+              reasoning_model: false,
               frontier_model: false,
-              short_name: "Fresh No Frontier",
+              short_name: "Fresh No Reasoning",
               agentic_index: 80,
               coding_index: 70,
               price_1m_blended_3_to_1: 1.0,
@@ -753,13 +753,13 @@ describe("ArtificialAnalysisClient", () => {
     );
   });
 
-  it("accepts cached non-reasoning frontier model with coding and agentic", async () => {
+  it("accepts cached reasoning model with coding and agentic", async () => {
     const cachedModels: ArtificialAnalysisModel[] = [
       {
-        slug: "non-reasoning-frontier",
-        model: "Non-Reasoning Frontier",
-        reasoningModel: false,
-        frontierModel: true,
+        slug: "reasoning-model",
+        model: "Reasoning Model",
+        reasoningModel: true,
+        frontierModel: false,
         agentic: 80,
         coding: 70,
         blendedPrice: null,
@@ -779,8 +779,8 @@ describe("ArtificialAnalysisClient", () => {
     const html = buildHtmlWithModels([
       {
         slug: "should-not-be-fetched",
-        reasoning_model: false,
-        frontier_model: true,
+        reasoning_model: true,
+        frontier_model: false,
         short_name: "Should Not Be Fetched",
         agentic_index: 80,
         coding_index: 70,
@@ -794,7 +794,7 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toEqual(cachedModels);
   });
 
-  it("rejects cached frontier model without coding score", async () => {
+  it("rejects cached reasoning model without coding score", async () => {
     const staleModels: ArtificialAnalysisModel[] = [
       {
         slug: "no-coding",
@@ -814,12 +814,12 @@ describe("ArtificialAnalysisClient", () => {
     const { ArtificialAnalysisClient, fetchWithTimeout } =
       await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
         if (validator(staleModels)) return staleModels;
-        const freshHtml = buildHtmlWithModels([freshFrontierRawModel()]);
+        const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
         mockHtmlResponse(fetchWithTimeout, freshHtml);
         return fetcher();
       });
 
-    expectFreshFrontier(await getModelsFromClient(ArtificialAnalysisClient));
+    expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
   });
 
   it("fills scores from embedded performance data into metadata models by slug", async () => {

@@ -1,10 +1,4 @@
-# model-exclusion-filter Specification
-
-## Purpose
-
-Exclude models from ranking by slug prefix pattern.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Exclude models by slug prefix
 

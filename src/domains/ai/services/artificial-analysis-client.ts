@@ -33,11 +33,11 @@ function updateStringState(char: string, state: CharState): CharState {
   return state;
 }
 
-function hasRankableFrontierModel(models: ArtificialAnalysisModel[]): boolean {
+function hasRankableReasoningModel(models: ArtificialAnalysisModel[]): boolean {
   return models.some(
     (m) =>
       m.slug.length > 0 &&
-      m.frontierModel &&
+      m.reasoningModel &&
       isFiniteNumber(m.coding) &&
       isFiniteNumber(m.agentic),
   );
@@ -474,7 +474,7 @@ export class ArtificialAnalysisClient {
         const html = await response.text();
         return parseModelsFromHtml(html);
       },
-      hasRankableFrontierModel,
+      hasRankableReasoningModel,
     );
   }
 }

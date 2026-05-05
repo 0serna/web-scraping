@@ -8,17 +8,17 @@ const WEIGHT_INTELLIGENCE_CODING = 0.4;
 const WEIGHT_EFFICIENCY = 0.15;
 const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
-function isRankableFrontierModel(
+function isRankableReasoningModel(
   model: ArtificialAnalysisModel,
 ): model is ArtificialAnalysisModel & {
   slug: string;
-  frontierModel: true;
+  reasoningModel: true;
   coding: number;
   agentic: number;
 } {
   return (
     model.slug.length > 0 &&
-    model.frontierModel === true &&
+    model.reasoningModel === true &&
     model.coding !== null &&
     model.agentic !== null
   );
@@ -36,7 +36,7 @@ interface ScoredModel {
 
 type RankableModel = ArtificialAnalysisModel & {
   slug: string;
-  frontierModel: true;
+  reasoningModel: true;
   coding: number;
   agentic: number;
 };
@@ -122,7 +122,7 @@ export class ModelRankingService {
     const models = await this.artificialAnalysisClient.getModels();
 
     const rankableModels = models
-      .filter(isRankableFrontierModel)
+      .filter(isRankableReasoningModel)
       .filter(
         (model) =>
           !EXCLUDED_SLUG_PREFIXES.some((prefix) =>
@@ -134,7 +134,7 @@ export class ModelRankingService {
 
     if (scoredModels.length === 0) {
       throw new AiParseError(
-        "No frontier models with slug, coding, and agentic scores were found",
+        "No reasoning models with slug, coding, and agentic scores were found",
       );
     }
 

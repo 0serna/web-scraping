@@ -7,8 +7,8 @@ function rankingModel(
     Pick<ArtificialAnalysisModel, "slug" | "model" | "agentic" | "coding">,
 ): ArtificialAnalysisModel {
   return {
-    reasoningModel: false,
-    frontierModel: true,
+    reasoningModel: true,
+    frontierModel: false,
     blendedPrice: null,
     inputPrice: null,
     outputPrice: null,
@@ -78,7 +78,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 50,
           coding: 50,
           blendedPrice: 0.375,
@@ -90,7 +90,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 80,
           coding: 40,
           blendedPrice: 0.375,
@@ -102,7 +102,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-c",
           model: "Model C",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 90,
           coding: null,
           blendedPrice: null,
@@ -136,7 +136,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: null,
           coding: 50,
           blendedPrice: null,
@@ -147,7 +147,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 80,
           coding: null,
           blendedPrice: null,
@@ -171,7 +171,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a-fast",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 90,
           coding: 40,
           blendedPrice: 0.25,
@@ -183,7 +183,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a-smart",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 70,
           coding: 70,
           blendedPrice: 0.75,
@@ -195,7 +195,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 80,
           coding: 40,
           blendedPrice: 0.125,
@@ -233,7 +233,7 @@ describe("ModelRankingService", () => {
       {
         slug: "model-x-cheap",
         model: "Model X",
-        frontierModel: true,
+        reasoningModel: true,
         agentic: 89.5,
         coding: 50.75,
         blendedPrice: 0.125,
@@ -245,7 +245,7 @@ describe("ModelRankingService", () => {
       {
         slug: "model-x-expensive",
         model: "Model X",
-        frontierModel: true,
+        reasoningModel: true,
         agentic: 90,
         coding: 50,
         blendedPrice: 0.325,
@@ -257,7 +257,7 @@ describe("ModelRankingService", () => {
       {
         slug: "model-y",
         model: "Model Y",
-        frontierModel: true,
+        reasoningModel: true,
         agentic: 85,
         coding: 60,
         blendedPrice: 0.525,
@@ -355,13 +355,13 @@ describe("ModelRankingService", () => {
     });
   });
 
-  it("filters by frontier, coding, and agentic only", async () => {
+  it("filters by reasoning, coding, and agentic only", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: null,
           coding: 0,
           blendedPrice: null,
@@ -373,7 +373,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 10,
           coding: 10,
           blendedPrice: null,
@@ -396,7 +396,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("includes frontier model without price data", async () => {
+  it("includes reasoning model without price data", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-a",
@@ -415,13 +415,14 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("includes frontier non-reasoning model in the ranking", async () => {
+  it("includes reasoning model without frontier flag in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
-          slug: "frontier-reasoning",
-          model: "Frontier Reasoning",
+          slug: "reasoning-frontier",
+          model: "Reasoning Frontier",
           reasoningModel: true,
+          frontierModel: true,
           agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
@@ -429,9 +430,10 @@ describe("ModelRankingService", () => {
           outputPrice: 0.7,
         }),
         rankingModel({
-          slug: "frontier-non-reasoning",
-          model: "Frontier Non-Reasoning",
-          reasoningModel: false,
+          slug: "reasoning-non-frontier",
+          model: "Reasoning Non-Frontier",
+          reasoningModel: true,
+          frontierModel: false,
           agentic: 95,
           coding: 95,
           blendedPrice: 0.25,
@@ -445,25 +447,25 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       {
-        model: "Frontier Non-Reasoning",
+        model: "Reasoning Non-Frontier",
         score: 100,
         tokensPerSecond: null,
       },
       {
-        model: "Frontier Reasoning",
+        model: "Reasoning Frontier",
         score: 80,
         tokensPerSecond: null,
       },
     ]);
   });
 
-  it("excludes non-frontier models from the ranking", async () => {
+  it("excludes non-reasoning models from the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
-          slug: "frontier-model",
-          model: "Frontier Model",
-          frontierModel: true,
+          slug: "reasoning-model",
+          model: "Reasoning Model",
+          reasoningModel: true,
           agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
@@ -473,9 +475,9 @@ describe("ModelRankingService", () => {
           tokensPerSecond: null,
         },
         {
-          slug: "non-frontier-model",
-          model: "Non-Frontier Model",
-          frontierModel: false,
+          slug: "non-reasoning-model",
+          model: "Non-Reasoning Model",
+          reasoningModel: false,
           agentic: 90,
           coding: 90,
           blendedPrice: 0.25,
@@ -491,20 +493,20 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       {
-        model: "Frontier Model",
+        model: "Reasoning Model",
         score: 100,
         tokensPerSecond: null,
       },
     ]);
   });
 
-  it("applies frontier filtering before final score calculation", async () => {
+  it("applies reasoning filtering before final score calculation", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
-          slug: "frontier-cheap",
-          model: "Frontier Cheap",
-          frontierModel: true,
+          slug: "reasoning-cheap",
+          model: "Reasoning Cheap",
+          reasoningModel: true,
           agentic: 50,
           coding: 50,
           blendedPrice: 0.1,
@@ -514,9 +516,9 @@ describe("ModelRankingService", () => {
           tokensPerSecond: null,
         },
         {
-          slug: "frontier-expensive",
-          model: "Frontier Expensive",
-          frontierModel: true,
+          slug: "reasoning-expensive",
+          model: "Reasoning Expensive",
+          reasoningModel: true,
           agentic: 80,
           coding: 80,
           blendedPrice: 10.0,
@@ -526,9 +528,9 @@ describe("ModelRankingService", () => {
           tokensPerSecond: null,
         },
         {
-          slug: "non-frontier-cheap",
-          model: "Non-Frontier Cheap",
-          frontierModel: false,
+          slug: "non-reasoning-cheap",
+          model: "Non-Reasoning Cheap",
+          reasoningModel: false,
           agentic: 50,
           coding: 50,
           blendedPrice: 0.01,
@@ -546,12 +548,12 @@ describe("ModelRankingService", () => {
     expect(ranking).toHaveLength(2);
     expect(ranking).toEqual([
       {
-        model: "Frontier Expensive",
+        model: "Reasoning Expensive",
         score: 100,
         tokensPerSecond: null,
       },
       {
-        model: "Frontier Cheap",
+        model: "Reasoning Cheap",
         score: 62.5,
         tokensPerSecond: null,
       },
@@ -564,7 +566,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: null,
           coding: 0,
           blendedPrice: null,
@@ -575,7 +577,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: -10,
           coding: -10,
           blendedPrice: 0.25,
@@ -599,7 +601,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 86.004,
           coding: 86.004,
           blendedPrice: 0.125,
@@ -610,7 +612,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          frontierModel: true,
+          reasoningModel: true,
           agentic: 85.99,
           coding: 85.99,
           blendedPrice: 0.2,
@@ -649,7 +651,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("excludes claude models but keeps other frontier models", async () => {
+  it("excludes claude models but keeps other reasoning models", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         excludedClaudeModel(),
@@ -700,7 +702,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("keeps zero-blended-price frontier models in the ranking", async () => {
+  it("keeps zero-blended-price reasoning models in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
