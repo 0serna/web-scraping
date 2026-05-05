@@ -15,10 +15,10 @@ export interface ArtificialAnalysisModel {
 
 export interface RankedModel {
   model: string;
-  releaseDate: string | null;
+  date: string | null;
   score: number;
-  tokensPerSecond: number | null;
-  outputTokensMillions: number | null;
+  speed: number | null;
+  output: number | null;
 }
 
 export interface RawArtificialAnalysisModel {

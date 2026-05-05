@@ -34,12 +34,12 @@ function isModelReleasedWithinWindow(
 
 interface ScoredModel {
   model: string;
+  date: string | null;
   internalScore: number;
   coding: number;
   agentic: number;
-  tokensPerSecond: number | null;
-  outputTokensMillions: number | null;
-  releaseDate: string | null;
+  speed: number | null;
+  output: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
@@ -72,14 +72,12 @@ function toRoundedMillions(value: number | null): number | null {
 function toScoredModel(model: RankableModel): ScoredModel {
   return {
     model: model.model,
+    date: model.releaseDate,
     internalScore: calculateBaseScore(model),
     coding: model.coding,
     agentic: model.agentic,
-    tokensPerSecond: model.tokensPerSecond,
-    outputTokensMillions: toRoundedMillions(
-      model.intelligenceIndexOutputTokens,
-    ),
-    releaseDate: model.releaseDate,
+    speed: model.tokensPerSecond,
+    output: toRoundedMillions(model.intelligenceIndexOutputTokens),
   };
 }
 
@@ -129,12 +127,12 @@ export class ModelRankingService {
 
     return rankedModels.map((entry) => ({
       model: entry.model,
+      date: entry.date,
       score: Number(
         ((entry.internalScore / topInternalScore) * 100).toFixed(2),
       ),
-      tokensPerSecond: entry.tokensPerSecond,
-      outputTokensMillions: entry.outputTokensMillions,
-      releaseDate: entry.releaseDate,
+      speed: entry.speed,
+      output: entry.output,
     }));
   }
 }

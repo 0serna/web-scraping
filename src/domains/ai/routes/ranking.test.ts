@@ -1,18 +1,11 @@
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { createFastifyAppTracker } from "../../../shared/test-utils/fastify-test-helpers.js";
+import type { RankedModel } from "../types/ranking.js";
 import { rankingRoutes } from "./ranking.js";
 
 interface ModelRankingServiceMock {
-  getRanking: () => Promise<
-    Array<{
-      model: string;
-      score: number;
-      tokensPerSecond: number | null;
-      outputTokensMillions: number | null;
-      releaseDate: string | null;
-    }>
-  >;
+  getRanking: () => Promise<RankedModel[]>;
 }
 
 function createServer(modelRankingService: ModelRankingServiceMock) {
@@ -31,17 +24,17 @@ describe("rankingRoutes", () => {
       getRanking: vi.fn().mockResolvedValue([
         {
           model: "Model B",
+          date: "2026-04-23",
           score: 100,
-          tokensPerSecond: 114,
-          outputTokensMillions: 25,
-          releaseDate: "2026-04-23",
+          speed: 114,
+          output: 25,
         },
         {
           model: "Model A",
+          date: null,
           score: 91,
-          tokensPerSecond: null,
-          outputTokensMillions: null,
-          releaseDate: null,
+          speed: null,
+          output: null,
         },
       ]),
     };
@@ -57,17 +50,17 @@ describe("rankingRoutes", () => {
     expect(response.json()).toEqual([
       {
         model: "Model B",
+        date: "2026-04-23",
         score: 100,
-        tokensPerSecond: 114,
-        outputTokensMillions: 25,
-        releaseDate: "2026-04-23",
+        speed: 114,
+        output: 25,
       },
       {
         model: "Model A",
+        date: null,
         score: 91,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
       },
     ]);
   });

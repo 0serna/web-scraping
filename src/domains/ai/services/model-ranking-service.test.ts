@@ -28,11 +28,14 @@ function createServiceForModels(models: ArtificialAnalysisModel[]) {
 function rankedModel(
   overrides: Pick<RankedModel, "model" | "score"> & Partial<RankedModel>,
 ): RankedModel {
+  const { model, date = null, score, speed = null, output = null } = overrides;
+
   return {
-    tokensPerSecond: null,
-    outputTokensMillions: null,
-    releaseDate: null,
-    ...overrides,
+    model,
+    date,
+    score,
+    speed,
+    output,
   };
 }
 
@@ -217,23 +220,23 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Model A",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Model B",
         score: 91.43,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -304,16 +307,16 @@ describe("ModelRankingService", () => {
     expect(modelXA).toEqual({
       model: "Model X",
       score: 98.67,
-      tokensPerSecond: null,
-      outputTokensMillions: null,
-      releaseDate: null,
+      speed: null,
+      output: null,
+      date: null,
     });
     expect(modelXB).toEqual({
       model: "Model X",
       score: 98.67,
-      tokensPerSecond: null,
-      outputTokensMillions: null,
-      releaseDate: null,
+      speed: null,
+      output: null,
+      date: null,
     });
     expect(rankingA).toEqual(rankingB);
   });
@@ -335,9 +338,9 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -427,9 +430,9 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -468,16 +471,16 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Non-Frontier",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Reasoning Frontier",
         score: 80,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -520,9 +523,9 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Model",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -580,16 +583,16 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Expensive",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Reasoning Cheap",
         score: 62.5,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -684,9 +687,9 @@ describe("ModelRankingService", () => {
       {
         model: "GPT-5.5",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -714,16 +717,16 @@ describe("ModelRankingService", () => {
       {
         model: "GPT-5.5",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Gemini 2 Pro",
         score: 86.84,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -741,9 +744,9 @@ describe("ModelRankingService", () => {
       {
         model: "GPT-5.5",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -778,16 +781,16 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
       {
         model: "Model B",
         score: 90,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -820,16 +823,16 @@ describe("ModelRankingService", () => {
       {
         model: "Model High Base",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: 200,
-        releaseDate: null,
+        speed: null,
+        output: 200,
+        date: null,
       },
       {
         model: "Model Efficient",
         score: 88.37,
-        tokensPerSecond: null,
-        outputTokensMillions: 10,
-        releaseDate: null,
+        speed: null,
+        output: 10,
+        date: null,
       },
     ]);
     expect(ranking[0].score).toBe(100);
@@ -918,21 +921,21 @@ describe("ModelRankingService", () => {
       {
         model: "Model A Inefficient",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: 50,
-        releaseDate: null,
+        speed: null,
+        output: 50,
+        date: null,
       },
       {
         model: "Model B Efficient",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: 10,
-        releaseDate: null,
+        speed: null,
+        output: 10,
+        date: null,
       },
     ]);
   });
 
-  it("includes rounded outputTokensMillions from source model in ranking", async () => {
+  it("includes rounded output from source model in ranking", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-with-output-tokens",
@@ -949,14 +952,14 @@ describe("ModelRankingService", () => {
       {
         model: "Model With Output Tokens",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: 25,
-        releaseDate: null,
+        speed: null,
+        output: 25,
+        date: null,
       },
     ]);
   });
 
-  it("returns null outputTokensMillions when source model has no output-token data", async () => {
+  it("returns null output when source model has no output-token data", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-no-output-tokens",
@@ -973,14 +976,14 @@ describe("ModelRankingService", () => {
       {
         model: "Model No Output Tokens",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
 
-  it("includes tokensPerSecond from source model in ranking", async () => {
+  it("includes speed from source model in ranking", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-with-speed",
@@ -997,14 +1000,14 @@ describe("ModelRankingService", () => {
       {
         model: "Model With Speed",
         score: 100,
-        tokensPerSecond: 114,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: 114,
+        output: null,
+        date: null,
       },
     ]);
   });
 
-  it("returns null tokensPerSecond when source model has no speed data", async () => {
+  it("returns null speed when source model has no speed data", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-no-speed",
@@ -1021,9 +1024,9 @@ describe("ModelRankingService", () => {
       {
         model: "Model No Speed",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate: null,
+        speed: null,
+        output: null,
+        date: null,
       },
     ]);
   });
@@ -1057,10 +1060,10 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toHaveLength(1);
     expect(ranking[0].model).toBe("Recent Model");
-    expect(ranking[0].releaseDate).toBe(recentDate);
+    expect(ranking[0].date).toBe(recentDate);
   });
 
-  it("includes models with null releaseDate", async () => {
+  it("includes models with null date", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "unknown-date-model",
@@ -1075,10 +1078,10 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toHaveLength(1);
     expect(ranking[0].model).toBe("Unknown Date Model");
-    expect(ranking[0].releaseDate).toBeNull();
+    expect(ranking[0].date).toBeNull();
   });
 
-  it("includes models with future releaseDate", async () => {
+  it("includes models with future date", async () => {
     const futureDate = new Date(Date.now() + 30 * 86_400_000)
       .toISOString()
       .split("T")[0];
@@ -1097,10 +1100,10 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toHaveLength(1);
     expect(ranking[0].model).toBe("Future Model");
-    expect(ranking[0].releaseDate).toBe(futureDate);
+    expect(ranking[0].date).toBe(futureDate);
   });
 
-  it("includes releaseDate in ranking response", async () => {
+  it("includes date in ranking response", async () => {
     const releaseDate = "2026-04-23";
 
     const service = createServiceForModels([
@@ -1119,9 +1122,9 @@ describe("ModelRankingService", () => {
       {
         model: "Dated Model",
         score: 100,
-        tokensPerSecond: null,
-        outputTokensMillions: null,
-        releaseDate,
+        speed: null,
+        output: null,
+        date: releaseDate,
       },
     ]);
   });
