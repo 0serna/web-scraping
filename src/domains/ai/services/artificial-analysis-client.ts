@@ -154,6 +154,9 @@ function normalizeModel(
   const slug = typeof rawModel.slug === "string" ? rawModel.slug.trim() : "";
   if (slug.length === 0) return null;
 
+  const releaseDate =
+    typeof rawModel.release_date === "string" ? rawModel.release_date : null;
+
   return {
     slug,
     model,
@@ -167,6 +170,7 @@ function normalizeModel(
     outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
     tokensPerSecond: extractTokensPerSecond(rawModel),
+    releaseDate,
   };
 }
 
@@ -229,6 +233,9 @@ function toPerformanceData(
   const slug = typeof raw.slug === "string" ? raw.slug.trim() : "";
   if (slug.length === 0) return null;
 
+  const releaseDate =
+    typeof raw.release_date === "string" ? raw.release_date : null;
+
   return {
     slug,
     frontierModel: raw.frontier_model === true,
@@ -239,6 +246,7 @@ function toPerformanceData(
     outputPrice: resolveNumericField(raw.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(raw),
     tokensPerSecond: extractTokensPerSecond(raw),
+    releaseDate,
   };
 }
 
@@ -342,6 +350,11 @@ interface PerformanceFields {
   outputPrice: number | null;
   intelligenceIndexOutputTokens: number | null;
   tokensPerSecond: number | null;
+  releaseDate: string | null;
+}
+
+function mergeNullableField<T>(source: T | null, fallback: T | null): T | null {
+  return source ?? fallback;
 }
 
 function mergePerformanceFields<T extends ArtificialAnalysisModel>(
@@ -350,16 +363,21 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
 ): T {
   return {
     ...model,
-    frontierModel: source.frontierModel ?? model.frontierModel,
-    coding: source.coding ?? model.coding,
-    agentic: source.agentic ?? model.agentic,
-    blendedPrice: source.blendedPrice ?? model.blendedPrice,
-    inputPrice: source.inputPrice ?? model.inputPrice,
-    outputPrice: source.outputPrice ?? model.outputPrice,
-    intelligenceIndexOutputTokens:
-      source.intelligenceIndexOutputTokens ??
+    frontierModel: source.frontierModel,
+    coding: mergeNullableField(source.coding, model.coding),
+    agentic: mergeNullableField(source.agentic, model.agentic),
+    blendedPrice: mergeNullableField(source.blendedPrice, model.blendedPrice),
+    inputPrice: mergeNullableField(source.inputPrice, model.inputPrice),
+    outputPrice: mergeNullableField(source.outputPrice, model.outputPrice),
+    intelligenceIndexOutputTokens: mergeNullableField(
+      source.intelligenceIndexOutputTokens,
       model.intelligenceIndexOutputTokens,
-    tokensPerSecond: source.tokensPerSecond ?? model.tokensPerSecond,
+    ),
+    tokensPerSecond: mergeNullableField(
+      source.tokensPerSecond,
+      model.tokensPerSecond,
+    ),
+    releaseDate: mergeNullableField(source.releaseDate, model.releaseDate),
   };
 }
 

@@ -10,6 +10,7 @@ interface ModelRankingServiceMock {
       score: number;
       tokensPerSecond: number | null;
       outputTokensMillions: number | null;
+      releaseDate: string | null;
     }>
   >;
 }
@@ -33,12 +34,14 @@ describe("rankingRoutes", () => {
           score: 100,
           tokensPerSecond: 114,
           outputTokensMillions: 25,
+          releaseDate: "2026-04-23",
         },
         {
           model: "Model A",
           score: 91,
           tokensPerSecond: null,
           outputTokensMillions: null,
+          releaseDate: null,
         },
       ]),
     };
@@ -57,12 +60,14 @@ describe("rankingRoutes", () => {
         score: 100,
         tokensPerSecond: 114,
         outputTokensMillions: 25,
+        releaseDate: "2026-04-23",
       },
       {
         model: "Model A",
         score: 91,
         tokensPerSecond: null,
         outputTokensMillions: null,
+        releaseDate: null,
       },
     ]);
   });

@@ -4,7 +4,7 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
 const WEIGHT_INTELLIGENCE_CODING = 0.4;
-
+const RECENT_MODEL_WINDOW_DAYS = 90;
 const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
 function isRankableReasoningModel(
@@ -23,6 +23,15 @@ function isRankableReasoningModel(
   );
 }
 
+function isModelReleasedWithinWindow(
+  model: ArtificialAnalysisModel,
+  cutoffDate: Date,
+): boolean {
+  if (model.releaseDate === null) return true;
+  const modelDate = new Date(model.releaseDate);
+  return modelDate >= cutoffDate;
+}
+
 interface ScoredModel {
   model: string;
   internalScore: number;
@@ -30,6 +39,7 @@ interface ScoredModel {
   agentic: number;
   tokensPerSecond: number | null;
   outputTokensMillions: number | null;
+  releaseDate: string | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
@@ -69,6 +79,7 @@ function toScoredModel(model: RankableModel): ScoredModel {
     outputTokensMillions: toRoundedMillions(
       model.intelligenceIndexOutputTokens,
     ),
+    releaseDate: model.releaseDate,
   };
 }
 
@@ -84,8 +95,13 @@ export class ModelRankingService {
   async getRanking(): Promise<RankedModel[]> {
     const models = await this.artificialAnalysisClient.getModels();
 
+    const cutoffDate = new Date(
+      Date.now() - RECENT_MODEL_WINDOW_DAYS * 86_400_000,
+    );
+
     const rankableModels = models
       .filter(isRankableReasoningModel)
+      .filter((model) => isModelReleasedWithinWindow(model, cutoffDate))
       .filter(
         (model) =>
           !EXCLUDED_SLUG_PREFIXES.some((prefix) =>
@@ -118,6 +134,7 @@ export class ModelRankingService {
       ),
       tokensPerSecond: entry.tokensPerSecond,
       outputTokensMillions: entry.outputTokensMillions,
+      releaseDate: entry.releaseDate,
     }));
   }
 }
