@@ -131,21 +131,6 @@ function resolveOutputTokens(raw: RawArtificialAnalysisModel): number | null {
   return isFiniteNumber(value) && value > 0 ? value : null;
 }
 
-function extractTokensPerSecond(
-  raw: RawArtificialAnalysisModel,
-): number | null {
-  const performance = raw.performanceByPromptLength;
-  if (!Array.isArray(performance)) return null;
-
-  const mediumCoding = performance.find(
-    (entry) => entry?.prompt_length_type === "medium_coding",
-  );
-  if (!mediumCoding) return null;
-
-  const value = resolveNumericField(mediumCoding.median_output_speed);
-  return value !== null ? Math.round(value) : null;
-}
-
 function resolveDeprecated(
   raw: RawArtificialAnalysisModel,
 ): boolean | undefined {
@@ -175,7 +160,6 @@ function normalizeModel(
     inputPrice: resolveNumericField(rawModel.price_1m_input_tokens),
     outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
-    tokensPerSecond: extractTokensPerSecond(rawModel),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -250,7 +234,6 @@ function toPerformanceData(
     inputPrice: resolveNumericField(raw.price_1m_input_tokens),
     outputPrice: resolveNumericField(raw.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(raw),
-    tokensPerSecond: extractTokensPerSecond(raw),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -369,10 +352,6 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
     intelligenceIndexOutputTokens: mergeNullableField(
       source.intelligenceIndexOutputTokens,
       model.intelligenceIndexOutputTokens,
-    ),
-    tokensPerSecond: mergeNullableField(
-      source.tokensPerSecond,
-      model.tokensPerSecond,
     ),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };

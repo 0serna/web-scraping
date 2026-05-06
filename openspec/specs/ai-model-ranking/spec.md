@@ -81,7 +81,7 @@ The system SHALL normalize Artificial Analysis' `reasoning_model` and `isReasoni
 
 ### Requirement: Return relative ranking scores
 
-The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the internal intelligence score of the model at `position: 1`, where the internal intelligence score is calculated from coding and agentic scores only.
+The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the adjusted internal score of the model at `position: 1`, where the adjusted internal score is calculated from coding and agentic scores plus any output-efficiency bonus.
 
 #### Scenario: Top model score is 100
 
@@ -91,11 +91,11 @@ The system SHALL return AI model ranking items with `score` expressed as a perce
 #### Scenario: Lower-ranked scores are relative percentages
 
 - **WHEN** the system returns ranked models below `position: 1`
-- **THEN** each lower-ranked model's `score` SHALL equal its unrounded internal intelligence score divided by the unrounded internal intelligence score of the first-ranked model, multiplied by 100 and rounded for response output
+- **THEN** each lower-ranked model's `score` SHALL equal its unrounded adjusted internal score divided by the unrounded adjusted internal score of the first-ranked model, multiplied by 100 and rounded for response output
 
 #### Scenario: Non-positive top internal score is invalid
 
-- **WHEN** the first-ranked model's internal intelligence score is less than or equal to 0
+- **WHEN** the first-ranked model's adjusted internal score is less than or equal to 0
 - **THEN** the system SHALL fail the ranking instead of returning relative scores
 
 #### Scenario: Price omitted from ranking order
@@ -103,25 +103,26 @@ The system SHALL return AI model ranking items with `score` expressed as a perce
 - **WHEN** multiple reasoning models have coding and agentic scores
 - **THEN** the system SHALL NOT use blended price to determine eligibility or ranking order
 
-#### Scenario: Output tokens omitted from ranking order and scores
+#### Scenario: Output tokens affect ranking scores through bounded efficiency bonus
 
-- **WHEN** multiple reasoning models have coding and agentic scores
-- **THEN** the system SHALL NOT use output token counts to determine eligibility, ranking order, tie-breaks, or score calculation
+- **WHEN** multiple reasoning models have coding scores, agentic scores, and valid output-token counts below the configured output-efficiency threshold
+- **THEN** the system SHALL apply the bounded output-efficiency bonus to adjusted internal scores before ordering models and calculating public relative scores
 
 #### Scenario: Ranking ties are deterministic
 
-- **WHEN** two reasoning models have equal internal intelligence scores
-- **THEN** the system SHALL order them by agentic score descending, then coding score descending, then model name ascending
+- **WHEN** two reasoning models have equal adjusted internal scores
+- **THEN** the system SHALL order them by agentic score descending, then coding score descending, then lower valid output-token count, then model name ascending
+- **AND** models without valid output-token counts SHALL sort after models with valid output-token counts for the output-token tie-break
 
 ### Requirement: Omit price from ranking response
 
-The system SHALL NOT include model price fields or release-date fields in successful AI model ranking response items.
+The system SHALL NOT include model price fields, speed fields, or release-date fields in successful AI model ranking response items.
 
-#### Scenario: Ranking response excludes price and date
+#### Scenario: Ranking response excludes price, speed, and date
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `score`, `speed`, and `output`
-- **AND** each ranking item SHALL NOT include `price1m`, `date`, or `releaseDate`
+- **THEN** each ranking item SHALL include `model`, `score`, and `output`
+- **AND** each ranking item SHALL NOT include `price1m`, `speed`, `tokensPerSecond`, `date`, or `releaseDate`
 
 ### Requirement: Exclude models by slug prefix before scoring
 
@@ -139,26 +140,6 @@ The system SHALL apply the slug prefix exclusion filter after the reasoning mode
 - **WHEN** the highest-scoring model has an excluded slug prefix
 - **THEN** the system SHALL rank the next non-excluded model at `position: 1` with `score: 100`
 
-### Requirement: Include tokens per second in ranking response
-
-The system SHALL include `tokensPerSecond` as an informational field on each ranked model in the AI model ranking response.
-
-#### Scenario: Tokens per second extracted from medium_coding prompt length
-
-- **WHEN** Artificial Analysis model data contains `performanceByPromptLength` with an entry where `prompt_length_type` is `"medium_coding"`
-- **THEN** the system SHALL extract `median_output_speed` from that entry and expose it as `tokensPerSecond` on the ranked model
-
-#### Scenario: Tokens per second is null when performance data missing
-
-- **WHEN** Artificial Analysis model data does not contain `performanceByPromptLength` or lacks a `"medium_coding"` entry
-- **THEN** the system SHALL set `tokensPerSecond` to `null` on the ranked model
-
-#### Scenario: Tokens per second does not affect ranking order
-
-- **WHEN** the system calculates ranking positions and scores
-- **THEN** the system SHALL NOT use `tokensPerSecond` to determine eligibility, ranking order, or score calculation
-- **AND** `tokensPerSecond` SHALL be purely informational in the response
-
 ### Requirement: Include output-token millions in ranking response
 
 The system SHALL include `outputTokensMillions` as an informational field on each ranked model in the AI model ranking response.
@@ -173,8 +154,7 @@ The system SHALL include `outputTokensMillions` as an informational field on eac
 - **WHEN** Artificial Analysis model data does not contain a valid positive `intelligence_index_token_counts.output_tokens` value
 - **THEN** the system SHALL set `outputTokensMillions` to `null` on the ranked model
 
-#### Scenario: Output tokens does not affect ranking order
+#### Scenario: Output tokens affect ranking only through bounded efficiency bonus and tie-breaks
 
 - **WHEN** the system calculates ranking positions and scores
-- **THEN** the system SHALL NOT use `outputTokensMillions` to determine eligibility, ranking order, tie-breaks, or score calculation
-- **AND** `outputTokensMillions` SHALL be purely informational in the response
+- **THEN** the system SHALL use output-token counts only for bounded output-efficiency bonus calculation and deterministic output-token tie-breaks

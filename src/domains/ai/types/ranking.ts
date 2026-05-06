@@ -9,14 +9,12 @@ export interface ArtificialAnalysisModel {
   inputPrice: number | null;
   outputPrice: number | null;
   intelligenceIndexOutputTokens: number | null;
-  tokensPerSecond: number | null;
   deprecated?: boolean;
 }
 
 export interface RankedModel {
   model: string;
   score: number;
-  speed: number | null;
   output: number | null;
 }
 
@@ -37,10 +35,6 @@ export interface RawArtificialAnalysisModel {
   intelligence_index_token_counts?: {
     output_tokens?: number;
   };
-  performanceByPromptLength?: Array<{
-    prompt_length_type?: string;
-    median_output_speed?: number;
-  }>;
 }
 
 export interface PerformanceData {
@@ -52,6 +46,5 @@ export interface PerformanceData {
   inputPrice: number | null;
   outputPrice: number | null;
   intelligenceIndexOutputTokens: number | null;
-  tokensPerSecond: number | null;
   deprecated?: boolean;
 }

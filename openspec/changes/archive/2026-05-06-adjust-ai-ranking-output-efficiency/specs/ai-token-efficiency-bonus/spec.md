@@ -1,10 +1,4 @@
-# ai-token-efficiency-bonus Specification
-
-## Purpose
-
-Apply a configurable token-efficiency bonus to AI model ranking scores based on each model's intelligence per million output tokens.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Configure AI token efficiency bonus weight
 

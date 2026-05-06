@@ -151,7 +151,6 @@ function staleModel(overrides: Partial<ArtificialAnalysisModel> = {}) {
     inputPrice: 0.3,
     outputPrice: 0.7,
     intelligenceIndexOutputTokens: null,
-    tokensPerSecond: null,
     ...overrides,
   } satisfies ArtificialAnalysisModel;
 }
@@ -171,7 +170,6 @@ function expectGpt55PerformanceModels(
     inputPrice: null,
     outputPrice: null,
     intelligenceIndexOutputTokens: null,
-    tokensPerSecond: null,
   });
   expect(result).toContainEqual({
     slug: "gpt-5-5",
@@ -184,7 +182,6 @@ function expectGpt55PerformanceModels(
     inputPrice: null,
     outputPrice: null,
     intelligenceIndexOutputTokens: null,
-    tokensPerSecond: null,
   });
 }
 
@@ -231,7 +228,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: 0.15,
         outputPrice: 0.6,
         intelligenceIndexOutputTokens: 15000,
-        tokensPerSecond: null,
       },
       {
         slug: "model-b",
@@ -244,7 +240,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: null,
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
-        tokensPerSecond: null,
       },
     ]);
 
@@ -286,7 +281,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: null,
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
-        tokensPerSecond: null,
       },
     ]);
   });
@@ -385,7 +379,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: 0.75,
       outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
 
     // Second model should have metadata but no performance data
@@ -400,7 +393,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -436,7 +428,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
 
     expect(result).toContainEqual({
@@ -450,7 +441,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -481,7 +471,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: null,
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
-        tokensPerSecond: null,
       },
     ]);
   });
@@ -538,7 +527,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: 0.75,
       outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -576,7 +564,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
 
     expect(result).toContainEqual({
@@ -590,7 +577,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -686,7 +672,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -767,7 +752,6 @@ describe("ArtificialAnalysisClient", () => {
       inputPrice: null,
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
-      tokensPerSecond: null,
     });
   });
 
@@ -838,7 +822,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: null,
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
-        tokensPerSecond: null,
       },
     ];
 
@@ -902,7 +885,6 @@ describe("ArtificialAnalysisClient", () => {
         inputPrice: null,
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
-        tokensPerSecond: null,
       },
     ];
 
@@ -1081,73 +1063,6 @@ describe("ArtificialAnalysisClient", () => {
       expect.objectContaining({
         slug: "embedded-tokens",
         intelligenceIndexOutputTokens: 30000,
-      }),
-    );
-  });
-
-  it("extracts tokensPerSecond from performanceByPromptLength medium_coding", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-with-speed",
-        short_name: "Model With Speed",
-        frontier_model: true,
-        agentic_index: 80,
-        coding_index: 70,
-        performanceByPromptLength: [
-          { prompt_length_type: "100k", median_output_speed: 50 },
-          { prompt_length_type: "medium_coding", median_output_speed: 113.5 },
-          { prompt_length_type: "medium", median_output_speed: 80 },
-        ],
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-with-speed",
-        tokensPerSecond: 114,
-      }),
-    );
-  });
-
-  it("returns null tokensPerSecond when performanceByPromptLength is missing", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-no-speed",
-        short_name: "Model No Speed",
-        frontier_model: true,
-        agentic_index: 80,
-        coding_index: 70,
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-no-speed",
-      }),
-    );
-  });
-
-  it("returns null tokensPerSecond when medium_coding entry is missing", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-no-coding-speed",
-        short_name: "Model No Coding Speed",
-        frontier_model: true,
-        agentic_index: 80,
-        coding_index: 70,
-        performanceByPromptLength: [
-          { prompt_length_type: "100k", median_output_speed: 50 },
-          { prompt_length_type: "medium", median_output_speed: 80 },
-        ],
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-no-coding-speed",
       }),
     );
   });
