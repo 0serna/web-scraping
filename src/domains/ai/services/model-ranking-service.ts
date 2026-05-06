@@ -4,8 +4,8 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.7;
 const WEIGHT_INTELLIGENCE_CODING = 0.3;
-const OUTPUT_EFFICIENCY_MAX_BONUS = 0.15;
-const OUTPUT_EFFICIENCY_THRESHOLD_TOKENS = 100_000_000;
+const OUTPUT_EFFICIENCY_MAX_ADJUSTMENT = 0.1;
+const OUTPUT_EFFICIENCY_THRESHOLD_TOKENS = 80_000_000;
 const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
 function isRankableReasoningModel(
@@ -54,38 +54,49 @@ function calculateBaseScore(model: RankableModel): number {
   );
 }
 
+function toValidOutputTokens(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value) || value <= 0) return null;
+  return value;
+}
+
 function toRoundedMillions(value: number | null): number | null {
   if (value === null) return null;
   return Math.round(value / 1_000_000);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function calculateAdjustedScore(
   baseScore: number,
   outputTokens: number | null,
 ): number {
-  if (
-    outputTokens === null ||
-    outputTokens >= OUTPUT_EFFICIENCY_THRESHOLD_TOKENS
-  )
-    return baseScore;
-  const bonus =
-    OUTPUT_EFFICIENCY_MAX_BONUS *
-    (1 - outputTokens / OUTPUT_EFFICIENCY_THRESHOLD_TOKENS);
-  return baseScore * (1 + bonus);
+  const validOutputTokens = toValidOutputTokens(outputTokens);
+  if (validOutputTokens === null) return baseScore;
+
+  const adjustment = clamp(
+    OUTPUT_EFFICIENCY_MAX_ADJUSTMENT *
+      (1 - validOutputTokens / OUTPUT_EFFICIENCY_THRESHOLD_TOKENS),
+    -OUTPUT_EFFICIENCY_MAX_ADJUSTMENT,
+    OUTPUT_EFFICIENCY_MAX_ADJUSTMENT,
+  );
+
+  return baseScore * (1 + adjustment);
 }
 
 function toScoredModel(model: RankableModel): ScoredModel {
   const baseScore = calculateBaseScore(model);
+  const rawOutputTokens = toValidOutputTokens(
+    model.intelligenceIndexOutputTokens,
+  );
   return {
     model: model.model,
-    internalScore: calculateAdjustedScore(
-      baseScore,
-      model.intelligenceIndexOutputTokens,
-    ),
+    internalScore: calculateAdjustedScore(baseScore, rawOutputTokens),
     coding: model.coding,
     agentic: model.agentic,
-    rawOutputTokens: model.intelligenceIndexOutputTokens,
-    output: toRoundedMillions(model.intelligenceIndexOutputTokens),
+    rawOutputTokens,
+    output: toRoundedMillions(rawOutputTokens),
   };
 }
 

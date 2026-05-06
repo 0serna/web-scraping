@@ -1,12 +1,6 @@
-# ai-token-efficiency-bonus Specification
+## MODIFIED Requirements
 
-## Purpose
-
-Apply a configurable token-efficiency adjustment to AI model ranking scores based on each model's intelligence per million output tokens.
-
-## Requirements
-
-### Requirement: Configure AI token efficiency adjustment weight
+### Requirement: Configure AI token efficiency bonus weight
 
 The system SHALL define the AI ranking token-efficiency maximum adjustment and output-token threshold as constants in `src/domains/ai/services/model-ranking-service.ts`.
 
@@ -21,26 +15,7 @@ The system SHALL define the AI ranking token-efficiency maximum adjustment and o
 - **WHEN** the process starts without `MODEL_EFFICIENCY_WEIGHT`
 - **THEN** startup SHALL NOT fail because token-efficiency adjustment settings are service-local constants
 
-### Requirement: Parse Artificial Analysis Intelligence Index output token counts
-
-The system SHALL normalize Artificial Analysis `intelligence_index_token_counts.output_tokens` into AI model data when the source value is a finite positive number.
-
-#### Scenario: Output token count parsed from performance data
-
-- **WHEN** an Artificial Analysis model object contains `intelligence_index_token_counts.output_tokens` with a finite positive number
-- **THEN** the normalized AI model data SHALL expose that value for ranking efficiency calculations
-
-#### Scenario: Missing output token count remains optional
-
-- **WHEN** an Artificial Analysis model object does not contain a finite positive `intelligence_index_token_counts.output_tokens` value
-- **THEN** the normalized AI model data SHALL keep the model otherwise usable without a token-efficiency value
-
-#### Scenario: Output token count merged by slug
-
-- **WHEN** model metadata and performance data are provided in separate payload chunks for the same slug
-- **THEN** the system SHALL merge the output token count from performance data into the normalized model for that slug
-
-### Requirement: Apply token efficiency adjustment to AI ranking
+### Requirement: Apply token efficiency bonus to AI ranking
 
 The system SHALL apply a multiplicative output-efficiency adjustment to each rankable model's internal score when the model has a finite positive output-token count.
 

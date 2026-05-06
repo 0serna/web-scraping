@@ -81,7 +81,7 @@ The system SHALL normalize Artificial Analysis' `reasoning_model` and `isReasoni
 
 ### Requirement: Return relative ranking scores
 
-The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the adjusted internal score of the model at `position: 1`, where the adjusted internal score is calculated from coding and agentic scores plus any output-efficiency bonus.
+The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the adjusted internal score of the model at `position: 1`, where the adjusted internal score is calculated from coding and agentic scores plus any output-efficiency adjustment.
 
 #### Scenario: Top model score is 100
 
@@ -103,10 +103,12 @@ The system SHALL return AI model ranking items with `score` expressed as a perce
 - **WHEN** multiple reasoning models have coding and agentic scores
 - **THEN** the system SHALL NOT use blended price to determine eligibility or ranking order
 
-#### Scenario: Output tokens affect ranking scores through bounded efficiency bonus
+#### Scenario: Output tokens affect ranking scores through bounded efficiency adjustment
 
-- **WHEN** multiple reasoning models have coding scores, agentic scores, and valid output-token counts below the configured output-efficiency threshold
-- **THEN** the system SHALL apply the bounded output-efficiency bonus to adjusted internal scores before ordering models and calculating public relative scores
+- **WHEN** multiple reasoning models have coding scores, agentic scores, and valid output-token counts
+- **THEN** the system SHALL apply the bounded output-efficiency adjustment to adjusted internal scores before ordering models and calculating public relative scores
+- **AND** below-threshold output-token counts SHALL increase adjusted internal scores
+- **AND** above-threshold output-token counts SHALL decrease adjusted internal scores
 
 #### Scenario: Ranking ties are deterministic
 
@@ -154,7 +156,7 @@ The system SHALL include `outputTokensMillions` as an informational field on eac
 - **WHEN** Artificial Analysis model data does not contain a valid positive `intelligence_index_token_counts.output_tokens` value
 - **THEN** the system SHALL set `outputTokensMillions` to `null` on the ranked model
 
-#### Scenario: Output tokens affect ranking only through bounded efficiency bonus and tie-breaks
+#### Scenario: Output tokens affect ranking only through bounded efficiency adjustment and tie-breaks
 
 - **WHEN** the system calculates ranking positions and scores
-- **THEN** the system SHALL use output-token counts only for bounded output-efficiency bonus calculation and deterministic output-token tie-breaks
+- **THEN** the system SHALL use output-token counts only for bounded output-efficiency adjustment calculation and deterministic output-token tie-breaks

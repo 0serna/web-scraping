@@ -783,7 +783,49 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("applies bounded efficiency bonus that can promote token-efficient model", async () => {
+  it("applies positive output-efficiency adjustment below the threshold", async () => {
+    const service = createServiceForModels([
+      outputTokenRankingModel(
+        "model-threshold",
+        "Model Threshold",
+        100_000_000,
+      ),
+      outputTokenRankingModel("model-efficient", "Model Efficient", 10_000_000),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Efficient", score: 100, output: 10 }),
+      rankedModel({ model: "Model Threshold", score: 88, output: 100 }),
+    ]);
+  });
+
+  it("treats threshold output tokens as a neutral adjustment", async () => {
+    const service = createServiceForModels([
+      outputTokenRankingModel(
+        "model-threshold",
+        "Model Threshold",
+        100_000_000,
+      ),
+      rankingModel({
+        slug: "model-higher-base",
+        model: "Model Higher Base",
+        agentic: 82,
+        coding: 72,
+        intelligenceIndexOutputTokens: null,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Higher Base", score: 100, output: null }),
+      rankedModel({ model: "Model Threshold", score: 97, output: 100 }),
+    ]);
+  });
+
+  it("applies bounded efficiency adjustment that can promote token-efficient model", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
@@ -810,10 +852,32 @@ describe("ModelRankingService", () => {
     expect(ranking[0].model).toBe("Model Efficient");
     expect(ranking[0].score).toBe(100);
     expect(ranking[1].model).toBe("Model High Base");
-    expect(ranking[1].score).toBe(100);
+    expect(ranking[1].score).toBe(85);
   });
 
-  it("keeps models with missing output-token data rankable with no efficiency bonus", async () => {
+  it("applies a capped penalty above the threshold", async () => {
+    const service = createServiceForModels([
+      outputTokenRankingModel(
+        "model-threshold",
+        "Model Threshold",
+        100_000_000,
+      ),
+      outputTokenRankingModel(
+        "model-penalized",
+        "Model Penalized",
+        400_000_000,
+      ),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Threshold", score: 100, output: 100 }),
+      rankedModel({ model: "Model Penalized", score: 85, output: 400 }),
+    ]);
+  });
+
+  it("keeps models with missing output-token data rankable with a neutral adjustment", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
@@ -844,6 +908,32 @@ describe("ModelRankingService", () => {
     expect(ranking).toHaveLength(2);
     expect(ranking.map((r) => r.model)).toContain("Model No Tokens");
     expect(ranking.map((r) => r.model)).toContain("Model With Tokens");
+  });
+
+  it("keeps invalid or non-positive output-token data neutral and rankable", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-invalid-output",
+        model: "Model Invalid Output",
+        agentic: 90,
+        coding: 80,
+        intelligenceIndexOutputTokens: Number.NaN,
+      }),
+      rankingModel({
+        slug: "model-zero-output",
+        model: "Model Zero Output",
+        agentic: 70,
+        coding: 60,
+        intelligenceIndexOutputTokens: 0,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Invalid Output", score: 100, output: null }),
+      rankedModel({ model: "Model Zero Output", score: 77, output: null }),
+    ]);
   });
 
   it("preserves base ranking when no model has valid token data", async () => {
@@ -877,7 +967,7 @@ describe("ModelRankingService", () => {
     expect(ranking[1].model).toBe("Model A");
   });
 
-  it("ranks lower-output model higher when base scores are equal via efficiency bonus", async () => {
+  it("ranks lower-output model higher when base scores are equal via output-efficiency adjustment", async () => {
     const service = createServiceForModels([
       outputTokenRankingModel(
         "model-inefficient",
@@ -896,6 +986,52 @@ describe("ModelRankingService", () => {
     expect(ranking[0].score).toBe(100);
     expect(ranking[1].model).toBe("Model A Inefficient");
     expect(ranking[1].score).toBe(95);
+  });
+
+  it("prefers lower valid output-token counts when adjusted score and other tie-breaks are equal", async () => {
+    const service = createServiceForModels([
+      outputTokenRankingModel(
+        "model-higher-output",
+        "Model Higher Output",
+        400_000_000,
+      ),
+      outputTokenRankingModel(
+        "model-lower-output",
+        "Model Lower Output",
+        200_000_000,
+      ),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Lower Output", score: 100, output: 200 }),
+      rankedModel({ model: "Model Higher Output", score: 100, output: 400 }),
+    ]);
+  });
+
+  it("sorts lower valid output-token counts ahead of missing data when all prior tie-breaks are equal", async () => {
+    const service = createServiceForModels([
+      outputTokenRankingModel(
+        "model-valid-output",
+        "Model Valid Output",
+        100_000_000,
+      ),
+      rankingModel({
+        slug: "model-missing-output",
+        model: "Model Missing Output",
+        agentic: 80,
+        coding: 70,
+        intelligenceIndexOutputTokens: null,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Model Valid Output", score: 100, output: 100 }),
+      rankedModel({ model: "Model Missing Output", score: 100, output: null }),
+    ]);
   });
 
   it("includes rounded output from source model in ranking", async () => {
