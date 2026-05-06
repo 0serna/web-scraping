@@ -40,6 +40,11 @@ The system SHALL include only models that are explicitly marked as reasoning by 
 - **WHEN** a model has `reasoning_model: true`, slug, coding score, agentic score, and no explicit deprecated value
 - **THEN** the system SHALL include that model in the ranking
 
+#### Scenario: Older active reasoning model included
+
+- **WHEN** a model has `reasoning_model: true`, slug, coding score, agentic score, `deprecated: false`, and an old or missing release date
+- **THEN** the system SHALL keep that model eligible for ranking without applying a release-date recency window
+
 #### Scenario: Stale cached models refreshed once
 
 - **WHEN** cached Artificial Analysis model data contains no model with slug, reasoning flag, coding score, agentic score, and active-model eligibility
@@ -110,13 +115,13 @@ The system SHALL return AI model ranking items with `score` expressed as a perce
 
 ### Requirement: Omit price from ranking response
 
-The system SHALL NOT include model price fields in successful AI model ranking response items.
+The system SHALL NOT include model price fields or release-date fields in successful AI model ranking response items.
 
-#### Scenario: Ranking response excludes price
+#### Scenario: Ranking response excludes price and date
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `position`, `score`, `tokensPerSecond`, `outputTokensMillions`, and `releaseDate`
-- **AND** each ranking item SHALL NOT include `price1m`
+- **THEN** each ranking item SHALL include `model`, `score`, `speed`, and `output`
+- **AND** each ranking item SHALL NOT include `price1m`, `date`, or `releaseDate`
 
 ### Requirement: Exclude models by slug prefix before scoring
 

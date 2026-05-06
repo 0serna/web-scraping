@@ -152,7 +152,6 @@ function staleModel(overrides: Partial<ArtificialAnalysisModel> = {}) {
     outputPrice: 0.7,
     intelligenceIndexOutputTokens: null,
     tokensPerSecond: null,
-    releaseDate: null,
     ...overrides,
   } satisfies ArtificialAnalysisModel;
 }
@@ -173,7 +172,6 @@ function expectGpt55PerformanceModels(
     outputPrice: null,
     intelligenceIndexOutputTokens: null,
     tokensPerSecond: null,
-    releaseDate: null,
   });
   expect(result).toContainEqual({
     slug: "gpt-5-5",
@@ -187,7 +185,6 @@ function expectGpt55PerformanceModels(
     outputPrice: null,
     intelligenceIndexOutputTokens: null,
     tokensPerSecond: null,
-    releaseDate: null,
   });
 }
 
@@ -235,7 +232,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: 0.6,
         intelligenceIndexOutputTokens: 15000,
         tokensPerSecond: null,
-        releaseDate: null,
       },
       {
         slug: "model-b",
@@ -249,7 +245,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
         tokensPerSecond: null,
-        releaseDate: null,
       },
     ]);
 
@@ -292,7 +287,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
         tokensPerSecond: null,
-        releaseDate: null,
       },
     ]);
   });
@@ -392,7 +386,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
 
     // Second model should have metadata but no performance data
@@ -408,7 +401,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -445,7 +437,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
 
     expect(result).toContainEqual({
@@ -460,7 +451,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -492,7 +482,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
         tokensPerSecond: null,
-        releaseDate: null,
       },
     ]);
   });
@@ -550,7 +539,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -589,7 +577,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
 
     expect(result).toContainEqual({
@@ -604,7 +591,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -701,7 +687,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -783,7 +768,6 @@ describe("ArtificialAnalysisClient", () => {
       outputPrice: null,
       intelligenceIndexOutputTokens: null,
       tokensPerSecond: null,
-      releaseDate: null,
     });
   });
 
@@ -855,7 +839,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
         tokensPerSecond: null,
-        releaseDate: null,
       },
     ];
 
@@ -920,7 +903,6 @@ describe("ArtificialAnalysisClient", () => {
         outputPrice: null,
         intelligenceIndexOutputTokens: null,
         tokensPerSecond: null,
-        releaseDate: null,
       },
     ];
 
@@ -1143,7 +1125,6 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         slug: "model-no-speed",
-        releaseDate: null,
       }),
     );
   });
@@ -1167,12 +1148,11 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         slug: "model-no-coding-speed",
-        releaseDate: null,
       }),
     );
   });
 
-  it("extracts release_date from raw payload", async () => {
+  it("does not expose release_date from raw payload", async () => {
     const html = buildHtmlWithModels([
       {
         slug: "model-with-date",
@@ -1188,53 +1168,12 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         slug: "model-with-date",
-        releaseDate: "2026-04-23",
       }),
     );
+    expect(result[0]).not.toHaveProperty("releaseDate");
   });
 
-  it("defaults releaseDate to null when release_date is missing", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-no-date",
-        short_name: "Model No Date",
-        reasoning_model: true,
-        agentic_index: 80,
-        coding_index: 70,
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-no-date",
-        releaseDate: null,
-      }),
-    );
-  });
-
-  it("defaults releaseDate to null when release_date is not a string", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-invalid-date",
-        short_name: "Model Invalid Date",
-        reasoning_model: true,
-        agentic_index: 80,
-        coding_index: 70,
-        release_date: 12345,
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-invalid-date",
-        releaseDate: null,
-      }),
-    );
-  });
-
-  it("merges releaseDate from performance data by slug", async () => {
+  it("does not expose release_date from performance data", async () => {
     const metadataModels = [
       {
         slug: "model-merge-date",
@@ -1259,8 +1198,8 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual(
       expect.objectContaining({
         slug: "model-merge-date",
-        releaseDate: "2026-03-15",
       }),
     );
+    expect(result[0]).not.toHaveProperty("releaseDate");
   });
 });

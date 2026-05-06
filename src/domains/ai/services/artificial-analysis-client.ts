@@ -161,9 +161,6 @@ function normalizeModel(
   const slug = typeof rawModel.slug === "string" ? rawModel.slug.trim() : "";
   if (slug.length === 0) return null;
 
-  const releaseDate =
-    typeof rawModel.release_date === "string" ? rawModel.release_date : null;
-
   const deprecated = resolveDeprecated(rawModel);
 
   return {
@@ -179,7 +176,6 @@ function normalizeModel(
     outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
     tokensPerSecond: extractTokensPerSecond(rawModel),
-    releaseDate,
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -243,9 +239,6 @@ function toPerformanceData(
   const slug = typeof raw.slug === "string" ? raw.slug.trim() : "";
   if (slug.length === 0) return null;
 
-  const releaseDate =
-    typeof raw.release_date === "string" ? raw.release_date : null;
-
   const deprecated = resolveDeprecated(raw);
 
   return {
@@ -258,7 +251,6 @@ function toPerformanceData(
     outputPrice: resolveNumericField(raw.price_1m_output_tokens),
     intelligenceIndexOutputTokens: resolveOutputTokens(raw),
     tokensPerSecond: extractTokensPerSecond(raw),
-    releaseDate,
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -354,18 +346,7 @@ function uniqueModelsBySlug(
   return uniqueModels;
 }
 
-interface PerformanceFields {
-  frontierModel: boolean;
-  coding: number | null;
-  agentic: number | null;
-  blendedPrice: number | null;
-  inputPrice: number | null;
-  outputPrice: number | null;
-  intelligenceIndexOutputTokens: number | null;
-  tokensPerSecond: number | null;
-  releaseDate: string | null;
-  deprecated?: boolean;
-}
+type PerformanceFields = Omit<PerformanceData, "slug">;
 
 function mergeNullableField<T>(source: T | null, fallback: T | null): T | null {
   return source ?? fallback;
@@ -393,7 +374,6 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
       source.tokensPerSecond,
       model.tokensPerSecond,
     ),
-    releaseDate: mergeNullableField(source.releaseDate, model.releaseDate),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }

@@ -24,14 +24,12 @@ describe("rankingRoutes", () => {
       getRanking: vi.fn().mockResolvedValue([
         {
           model: "Model B",
-          date: "2026-04-23",
           score: 100,
           speed: 114,
           output: 25,
         },
         {
           model: "Model A",
-          date: null,
           score: 91,
           speed: null,
           output: null,
@@ -50,14 +48,12 @@ describe("rankingRoutes", () => {
     expect(response.json()).toEqual([
       {
         model: "Model B",
-        date: "2026-04-23",
         score: 100,
         speed: 114,
         output: 25,
       },
       {
         model: "Model A",
-        date: null,
         score: 91,
         speed: null,
         output: null,
