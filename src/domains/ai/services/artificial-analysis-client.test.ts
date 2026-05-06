@@ -624,6 +624,49 @@ describe("ArtificialAnalysisClient", () => {
     expect(result[0].frontierModel).toBe(false);
   });
 
+  it("preserves explicit deprecated values and omits missing deprecated", async () => {
+    const html = buildHtmlWithModels([
+      {
+        slug: "deprecated-model",
+        reasoning_model: true,
+        short_name: "Deprecated Model",
+        agentic_index: 80,
+        coding_index: 70,
+        deprecated: true,
+      },
+      {
+        slug: "active-model",
+        reasoning_model: true,
+        short_name: "Active Model",
+        agentic_index: 75,
+        coding_index: 65,
+        deprecated: false,
+      },
+      {
+        slug: "unknown-lifecycle-model",
+        reasoning_model: true,
+        short_name: "Unknown Lifecycle Model",
+        agentic_index: 70,
+        coding_index: 60,
+      },
+    ]);
+
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({ slug: "deprecated-model", deprecated: true }),
+    );
+    expect(result).toContainEqual(
+      expect.objectContaining({ slug: "active-model", deprecated: false }),
+    );
+    const unknownLifecycleModel = result.find(
+      (model) => model.slug === "unknown-lifecycle-model",
+    );
+
+    expect(unknownLifecycleModel).toBeDefined();
+    expect(unknownLifecycleModel).not.toHaveProperty("deprecated");
+  });
+
   it("merges frontier_model from performance data into metadata by slug", async () => {
     const metadataModels = [
       {
@@ -660,6 +703,35 @@ describe("ArtificialAnalysisClient", () => {
       tokensPerSecond: null,
       releaseDate: null,
     });
+  });
+
+  it("merges deprecated from performance data by slug", async () => {
+    const metadataModels = [
+      {
+        slug: "deprecated-from-performance",
+        name: "Deprecated From Performance",
+        isReasoning: true,
+      },
+    ];
+
+    const performanceModels = [
+      {
+        slug: "deprecated-from-performance",
+        coding_index: 51.48,
+        agentic_index: 55.66,
+        deprecated: true,
+      },
+    ];
+
+    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "deprecated-from-performance",
+        deprecated: true,
+      }),
+    );
   });
 
   it("handles duplicate slugs with identical metadata in multiple chunks", async () => {
@@ -809,6 +881,29 @@ describe("ArtificialAnalysisClient", () => {
     const result = await client.getModels();
 
     expect(result).toEqual(cachedModels);
+  });
+
+  it("rejects cached reasoning model when it is deprecated", async () => {
+    const staleModels: ArtificialAnalysisModel[] = [
+      staleModel({
+        slug: "deprecated-cached-model",
+        model: "Deprecated Cached Model",
+        reasoningModel: true,
+        agentic: 80,
+        coding: 70,
+        deprecated: true,
+      }),
+    ];
+
+    const { ArtificialAnalysisClient, fetchWithTimeout } =
+      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+        if (validator(staleModels)) return staleModels;
+        const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
+        mockHtmlResponse(fetchWithTimeout, freshHtml);
+        return fetcher();
+      });
+
+    expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
   });
 
   it("rejects cached reasoning model without coding score", async () => {

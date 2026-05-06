@@ -38,6 +38,7 @@ function hasRankableReasoningModel(models: ArtificialAnalysisModel[]): boolean {
     (m) =>
       m.slug.length > 0 &&
       m.reasoningModel &&
+      m.deprecated !== true &&
       isFiniteNumber(m.coding) &&
       isFiniteNumber(m.agentic),
   );
@@ -145,6 +146,12 @@ function extractTokensPerSecond(
   return value !== null ? Math.round(value) : null;
 }
 
+function resolveDeprecated(
+  raw: RawArtificialAnalysisModel,
+): boolean | undefined {
+  return typeof raw.deprecated === "boolean" ? raw.deprecated : undefined;
+}
+
 function normalizeModel(
   rawModel: RawArtificialAnalysisModel,
 ): ArtificialAnalysisModel | null {
@@ -156,6 +163,8 @@ function normalizeModel(
 
   const releaseDate =
     typeof rawModel.release_date === "string" ? rawModel.release_date : null;
+
+  const deprecated = resolveDeprecated(rawModel);
 
   return {
     slug,
@@ -171,6 +180,7 @@ function normalizeModel(
     intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
     tokensPerSecond: extractTokensPerSecond(rawModel),
     releaseDate,
+    ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
 
@@ -236,6 +246,8 @@ function toPerformanceData(
   const releaseDate =
     typeof raw.release_date === "string" ? raw.release_date : null;
 
+  const deprecated = resolveDeprecated(raw);
+
   return {
     slug,
     frontierModel: raw.frontier_model === true,
@@ -247,6 +259,7 @@ function toPerformanceData(
     intelligenceIndexOutputTokens: resolveOutputTokens(raw),
     tokensPerSecond: extractTokensPerSecond(raw),
     releaseDate,
+    ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
 
@@ -351,6 +364,7 @@ interface PerformanceFields {
   intelligenceIndexOutputTokens: number | null;
   tokensPerSecond: number | null;
   releaseDate: string | null;
+  deprecated?: boolean;
 }
 
 function mergeNullableField<T>(source: T | null, fallback: T | null): T | null {
@@ -361,6 +375,8 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
   model: T,
   source: PerformanceFields,
 ): T {
+  const deprecated = source.deprecated ?? model.deprecated;
+
   return {
     ...model,
     frontierModel: source.frontierModel,
@@ -378,6 +394,7 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
       model.tokensPerSecond,
     ),
     releaseDate: mergeNullableField(source.releaseDate, model.releaseDate),
+    ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
 

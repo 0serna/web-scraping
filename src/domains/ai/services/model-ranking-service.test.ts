@@ -751,6 +751,70 @@ describe("ModelRankingService", () => {
     ]);
   });
 
+  it("excludes deprecated models before calculating relative scores", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "deprecated-top-model",
+        model: "Deprecated Top Model",
+        agentic: 100,
+        coding: 100,
+        deprecated: true,
+      }),
+      rankingModel({
+        slug: "active-model",
+        model: "Active Model",
+        agentic: 80,
+        coding: 70,
+        deprecated: false,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({ model: "Active Model", score: 100 }),
+    ]);
+    expect(ranking[0]).not.toHaveProperty("deprecated");
+  });
+
+  it("keeps models with missing deprecated value eligible", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "unknown-lifecycle-model",
+        model: "Unknown Lifecycle Model",
+        agentic: 80,
+        coding: 70,
+      }),
+    ]);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      rankedModel({ model: "Unknown Lifecycle Model", score: 100 }),
+    ]);
+  });
+
+  it("throws when all otherwise rankable models are deprecated", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "deprecated-model-a",
+        model: "Deprecated Model A",
+        agentic: 80,
+        coding: 70,
+        deprecated: true,
+      }),
+      rankingModel({
+        slug: "deprecated-model-b",
+        model: "Deprecated Model B",
+        agentic: 70,
+        coding: 60,
+        deprecated: true,
+      }),
+    ]);
+
+    await expect(service.getRanking()).rejects.toMatchObject({
+      name: "AiParseError",
+    });
+  });
+
   it("keeps zero-blended-price reasoning models in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([

@@ -18,6 +18,7 @@ function isRankableReasoningModel(
   return (
     model.slug.length > 0 &&
     model.reasoningModel === true &&
+    model.deprecated !== true &&
     model.coding !== null &&
     model.agentic !== null
   );

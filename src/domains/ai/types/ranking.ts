@@ -11,6 +11,7 @@ export interface ArtificialAnalysisModel {
   intelligenceIndexOutputTokens: number | null;
   tokensPerSecond: number | null;
   releaseDate: string | null;
+  deprecated?: boolean;
 }
 
 export interface RankedModel {
@@ -35,6 +36,7 @@ export interface RawArtificialAnalysisModel {
   price_1m_input_tokens?: number;
   price_1m_output_tokens?: number;
   release_date?: string;
+  deprecated?: boolean;
   intelligence_index_token_counts?: {
     output_tokens?: number;
   };
@@ -55,4 +57,5 @@ export interface PerformanceData {
   intelligenceIndexOutputTokens: number | null;
   tokensPerSecond: number | null;
   releaseDate: string | null;
+  deprecated?: boolean;
 }
