@@ -29,6 +29,33 @@ function hasFinitePrice(map: TriiPriceMap): boolean {
   return Object.values(map).some((price) => Number.isFinite(price));
 }
 
+function parseTickerAndPrice(match: RegExpExecArray): {
+  ticker: string | null;
+  price: number | null;
+} {
+  const ticker = match[1]?.trim().toLowerCase();
+  const priceRaw = match[2] ?? "";
+
+  if (!ticker) return { ticker: null, price: null };
+
+  const price = parsePrice(priceRaw);
+  return { ticker, price };
+}
+
+function addTickerPriceToMap(
+  map: TriiPriceMap,
+  sectionHtml: string,
+  cardRegex: RegExp,
+): void {
+  let match: RegExpExecArray | null;
+  while ((match = cardRegex.exec(sectionHtml)) !== null) {
+    const { ticker, price } = parseTickerAndPrice(match);
+    if (ticker && price !== null) {
+      map[ticker] = price;
+    }
+  }
+}
+
 function parseTriiStockListHtml(html: string): TriiPriceMap {
   const map: TriiPriceMap = {};
 
@@ -41,18 +68,7 @@ function parseTriiStockListHtml(html: string): TriiPriceMap {
     /<h3>\s*([^<\s]+)\s*<\/h3>[\s\S]*?<div\s+class="title">\s*\$\s*([^<]+?)\s*<\/div>/g;
 
   for (const sectionHtml of sections) {
-    let match: RegExpExecArray | null;
-    while ((match = cardRegex.exec(sectionHtml)) !== null) {
-      const ticker = match[1]?.trim().toLowerCase();
-      const priceRaw = match[2] ?? "";
-
-      if (!ticker) continue;
-
-      const price = parsePrice(priceRaw);
-      if (price === null) continue;
-
-      map[ticker] = price;
-    }
+    addTickerPriceToMap(map, sectionHtml, cardRegex);
   }
 
   if (Object.keys(map).length === 0) {

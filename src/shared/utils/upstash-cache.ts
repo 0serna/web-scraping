@@ -101,27 +101,56 @@ export class UpstashCache<T> implements Cache<T> {
     return promise;
   }
 
+  private isValidCache(
+    value: T,
+    validator: (value: T) => boolean,
+    key: string,
+  ): boolean {
+    try {
+      return validator(value);
+    } catch (error) {
+      this.logger.warn(
+        { err: error, key },
+        "Cached value validation threw - treating as stale",
+      );
+      return false;
+    }
+  }
+
+  private validateFreshResult(
+    result: T,
+    validator: (value: T) => boolean,
+    key: string,
+  ): void {
+    if (validator(result)) return;
+    this.logger.warn(
+      { key },
+      "Fresh value failed validation - not storing in cache",
+    );
+    throw new Error(`Fresh value failed validation for key: ${key}`);
+  }
+
+  private async getValidCache(
+    key: string,
+    validator: (value: T) => boolean,
+  ): Promise<T | null> {
+    const cached = await this.get(key);
+    if (cached === null) return null;
+    if (this.isValidCache(cached, validator, key)) return cached;
+    this.logger.info({ key }, "Stale cache invalidation - validation failed");
+    await this.delete(key);
+    return null;
+  }
+
   async getOrFetchValidated(
     key: string,
     fetcher: () => Promise<T>,
     validator: (value: T) => boolean,
   ): Promise<T> {
-    const cached = await this.get(key);
-    if (cached !== null) {
-      try {
-        if (validator(cached)) {
-          this.logger.debug({ key }, "Validated cache hit");
-          return cached;
-        }
-      } catch (error) {
-        this.logger.warn(
-          { err: error, key },
-          "Cached value validation threw - treating as stale",
-        );
-      }
-
-      this.logger.info({ key }, "Stale cache invalidation - validation failed");
-      await this.delete(key);
+    const validCache = await this.getValidCache(key, validator);
+    if (validCache !== null) {
+      this.logger.debug({ key }, "Validated cache hit");
+      return validCache;
     }
 
     const pending = this.pendingRequests.get(key);
@@ -131,14 +160,7 @@ export class UpstashCache<T> implements Cache<T> {
 
     const promise = fetcher()
       .then(async (result) => {
-        if (!validator(result)) {
-          this.logger.warn(
-            { key },
-            "Fresh value failed validation - not storing in cache",
-          );
-          throw new Error(`Fresh value failed validation for key: ${key}`);
-        }
-
+        this.validateFreshResult(result, validator, key);
         await this.set(key, result);
         this.logger.debug({ key }, "Validated cache miss - stored new value");
         return result;

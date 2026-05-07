@@ -8,6 +8,10 @@ const OUTPUT_EFFICIENCY_MAX_ADJUSTMENT = 0.1;
 const OUTPUT_EFFICIENCY_THRESHOLD_TOKENS = 80_000_000;
 export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [];
 
+function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
+  return model.coding !== null && model.agentic !== null;
+}
+
 function isRankableReasoningModel(
   model: ArtificialAnalysisModel,
 ): model is RankableModel {
@@ -15,8 +19,7 @@ function isRankableReasoningModel(
     model.slug.length > 0 &&
     model.reasoningModel === true &&
     model.deprecated !== true &&
-    model.coding !== null &&
-    model.agentic !== null
+    hasRequiredModelData(model)
   );
 }
 
@@ -36,17 +39,50 @@ type RankableModel = ArtificialAnalysisModel & {
   agentic: number;
 };
 
-function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
-  if (right.internalScore !== left.internalScore)
-    return right.internalScore - left.internalScore;
-  if (right.normalizedAgentic !== left.normalizedAgentic)
-    return right.normalizedAgentic - left.normalizedAgentic;
-  if (right.normalizedCoding !== left.normalizedCoding)
-    return right.normalizedCoding - left.normalizedCoding;
+function compareInternalScore(left: ScoredModel, right: ScoredModel): number {
+  return right.internalScore - left.internalScore;
+}
+
+function compareNormalizedAgentic(
+  left: ScoredModel,
+  right: ScoredModel,
+): number {
+  return right.normalizedAgentic - left.normalizedAgentic;
+}
+
+function compareNormalizedCoding(
+  left: ScoredModel,
+  right: ScoredModel,
+): number {
+  return right.normalizedCoding - left.normalizedCoding;
+}
+
+function compareOutputTokens(left: ScoredModel, right: ScoredModel): number {
   const leftOutput = left.outputTokens ?? Infinity;
   const rightOutput = right.outputTokens ?? Infinity;
   if (leftOutput !== rightOutput) return leftOutput - rightOutput;
+  return 0;
+}
+
+function compareModelName(left: ScoredModel, right: ScoredModel): number {
   return left.model.localeCompare(right.model);
+}
+
+function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
+  const comparators = [
+    compareInternalScore,
+    compareNormalizedAgentic,
+    compareNormalizedCoding,
+    compareOutputTokens,
+    compareModelName,
+  ];
+
+  for (const compare of comparators) {
+    const result = compare(left, right);
+    if (result !== 0) return result;
+  }
+
+  return 0;
 }
 
 function getNormalizationMaxima(models: RankableModel[]) {

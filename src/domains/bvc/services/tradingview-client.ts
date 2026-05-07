@@ -42,37 +42,7 @@ export class TradingViewClient {
     try {
       const price = await this.tradingViewCache.getOrFetchValidated(
         cacheKey,
-        async () => {
-          const symbol = `BVC:${normalizedTicker.toUpperCase()}`;
-          const url = new URL(TRADINGVIEW_API_URL);
-          url.searchParams.set("symbol", symbol);
-          url.searchParams.set("fields", "close");
-          url.searchParams.set("no_404", "true");
-
-          const response = await fetchWithTimeout(url.toString(), {
-            headers: buildFetchHeaders({
-              accept: "application/json",
-              origin: "https://es.tradingview.com",
-              referer: "https://es.tradingview.com/",
-            }),
-          });
-
-          if (!response.ok) {
-            throw new BvcFetchError(
-              "Failed to fetch TradingView ticker",
-              response.status,
-              response.statusText,
-            );
-          }
-
-          const data = (await response.json()) as TradingViewResponse;
-
-          if (typeof data.close === "number" && Number.isFinite(data.close)) {
-            return data.close;
-          }
-
-          throw new BvcParseError("TradingView did not return a valid close");
-        },
+        async () => this.fetchPriceFromTradingView(normalizedTicker),
         Number.isFinite,
       );
 
@@ -82,10 +52,47 @@ export class TradingViewClient {
         source: "tradingview",
       };
     } catch (error) {
-      if (error instanceof BvcFetchError || error instanceof BvcParseError) {
-        throw error;
-      }
+      this.handlePriceError(error);
       return null;
     }
+  }
+
+  private handlePriceError(error: unknown): void {
+    if (error instanceof BvcFetchError) throw error;
+    if (error instanceof BvcParseError) throw error;
+  }
+
+  private async fetchPriceFromTradingView(
+    normalizedTicker: string,
+  ): Promise<number> {
+    const symbol = `BVC:${normalizedTicker.toUpperCase()}`;
+    const url = new URL(TRADINGVIEW_API_URL);
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("fields", "close");
+    url.searchParams.set("no_404", "true");
+
+    const response = await fetchWithTimeout(url.toString(), {
+      headers: buildFetchHeaders({
+        accept: "application/json",
+        origin: "https://es.tradingview.com",
+        referer: "https://es.tradingview.com/",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new BvcFetchError(
+        "Failed to fetch TradingView ticker",
+        response.status,
+        response.statusText,
+      );
+    }
+
+    const data = (await response.json()) as TradingViewResponse;
+
+    if (typeof data.close === "number" && Number.isFinite(data.close)) {
+      return data.close;
+    }
+
+    throw new BvcParseError("TradingView did not return a valid close");
   }
 }

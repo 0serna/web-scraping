@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
+    "check": "eslint . && tsc --noEmit && fallow --production-health && openspec validate --all",
     "format": "prettier --write .",
-    "check": "prettier --check . && eslint . && fallow --fail-on-issues && openspec validate --all --json && tsc --noEmit",
     "test": "vitest run",
     "prepare": "husky"
   },
@@ -40,7 +40,7 @@
     "*": [
       "prettier --write --ignore-unknown"
     ],
-    "*.ts": [
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
       "eslint --fix"
     ]
   }

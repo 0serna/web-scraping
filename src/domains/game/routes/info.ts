@@ -11,6 +11,28 @@ interface InfoRoutesOptions {
   gameInfoService: GameInfoService;
 }
 
+function validateUrlParam(url: unknown): string | null {
+  if (!url || typeof url !== "string") {
+    return null;
+  }
+  return url;
+}
+
+async function fetchAndSendGameInfo(
+  gameInfoService: GameInfoService,
+  appId: string,
+  reply: import("fastify").FastifyReply,
+): Promise<void> {
+  const gameInfo = await gameInfoService.getGameInfoByAppId(appId);
+  await reply.code(200).send(gameInfo);
+}
+
+async function sendScrapeError(
+  reply: import("fastify").FastifyReply,
+): Promise<void> {
+  await sendError(reply, 502, "SCRAPING_ERROR", "Unable to fetch game info");
+}
+
 export const infoRoutes: FastifyPluginAsync<InfoRoutesOptions> = async (
   fastify,
   opts,
@@ -22,12 +44,13 @@ export const infoRoutes: FastifyPluginAsync<InfoRoutesOptions> = async (
     async (request, reply) => {
       const { url } = request.query;
 
-      if (!url || typeof url !== "string") {
+      const validUrl = validateUrlParam(url);
+      if (!validUrl) {
         await sendError(reply, 400, "INVALID_URL", "URL parameter is required");
         return;
       }
 
-      const appId = extractAppId(url);
+      const appId = extractAppId(validUrl);
       if (!appId) {
         await sendError(
           reply,
@@ -38,21 +61,13 @@ export const infoRoutes: FastifyPluginAsync<InfoRoutesOptions> = async (
         return;
       }
 
-      fastify.log.info({ appId, url }, "Fetching game info");
+      fastify.log.info({ appId, url: validUrl }, "Fetching game info");
 
       try {
-        const gameInfo = await gameInfoService.getGameInfoByAppId(appId);
-
-        await reply.code(200).send(gameInfo);
+        await fetchAndSendGameInfo(gameInfoService, appId, reply);
       } catch (error) {
         fastify.log.error({ err: error, appId }, "Error fetching game info");
-
-        await sendError(
-          reply,
-          502,
-          "SCRAPING_ERROR",
-          "Unable to fetch game info",
-        );
+        await sendScrapeError(reply);
       }
     },
   );

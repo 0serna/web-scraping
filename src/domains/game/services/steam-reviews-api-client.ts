@@ -19,6 +19,22 @@ interface SteamScore {
   score: number;
 }
 
+function buildReviewsUrl(appId: string): string {
+  return `https://store.steampowered.com/appreviews/${appId}?json=1&filter=all&language=all&purchase_type=all&num_per_page=0`;
+}
+
+function validateApiSuccess(data: SteamReviewsResponse, appId: string): void {
+  if (data.success !== 1) {
+    throw new SteamParseError(
+      `Steam API returned success=${data.success} for app ${appId}`,
+    );
+  }
+}
+
+function isSteamError(error: unknown): boolean {
+  return error instanceof SteamFetchError || error instanceof SteamParseError;
+}
+
 function calculateScore(data: SteamReviewsResponse): SteamScore | null {
   const { total_positive, total_reviews } = data.query_summary;
 
@@ -48,7 +64,7 @@ export class SteamReviewsApiClient {
 
   async getScoreByAppId(appId: string): Promise<SteamScore | null> {
     try {
-      const url = `https://store.steampowered.com/appreviews/${appId}?json=1&filter=all&language=all&purchase_type=all&num_per_page=0`;
+      const url = buildReviewsUrl(appId);
 
       const data = await fetchSteamJson<SteamReviewsResponse>(
         this.rateLimiter,
@@ -56,11 +72,7 @@ export class SteamReviewsApiClient {
         `Failed to fetch Steam reviews API for app ${appId}`,
       );
 
-      if (data.success !== 1) {
-        throw new SteamParseError(
-          `Steam API returned success=${data.success} for app ${appId}`,
-        );
-      }
+      validateApiSuccess(data, appId);
 
       const score = calculateScore(data);
 
@@ -72,10 +84,7 @@ export class SteamReviewsApiClient {
 
       return score;
     } catch (error) {
-      if (
-        error instanceof SteamFetchError ||
-        error instanceof SteamParseError
-      ) {
+      if (isSteamError(error)) {
         throw error;
       }
       return handleSteamError(

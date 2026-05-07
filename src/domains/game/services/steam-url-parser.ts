@@ -1,15 +1,22 @@
+function isNumericString(value: string): boolean {
+  return /^\d+$/.test(value);
+}
+
+function extractAppIdFromPattern(url: string): string | null {
+  const match = url.match(/\/app\/(\d+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return null;
+}
+
 export function extractAppId(url: string): string | null {
   const trimmed = url.trim();
   if (trimmed.length === 0) return null;
 
-  if (/^\d+$/.test(trimmed)) {
+  if (isNumericString(trimmed)) {
     return trimmed;
   }
 
-  const match = trimmed.match(/\/app\/(\d+)/);
-  if (match && match[1]) {
-    return match[1];
-  }
-
-  return null;
+  return extractAppIdFromPattern(trimmed);
 }

@@ -33,15 +33,31 @@ function updateStringState(char: string, state: CharState): CharState {
   return state;
 }
 
-function hasRankableReasoningModel(models: ArtificialAnalysisModel[]): boolean {
-  return models.some(
-    (m) =>
-      m.slug.length > 0 &&
-      m.reasoningModel &&
-      m.deprecated !== true &&
-      isFiniteNumber(m.coding) &&
-      isFiniteNumber(m.agentic),
-  );
+function handleNonStringChar(
+  char: string,
+  depth: number,
+  state: CharState,
+  openChar: "[" | "{",
+  closeChar: "]" | "}",
+): { depth: number; state: CharState; done: boolean } {
+  if (char === '"')
+    return { depth, state: { inString: true, escaped: false }, done: false };
+  if (char === openChar) return { depth: depth + 1, state, done: false };
+  if (char !== closeChar) return { depth, state, done: false };
+  const newDepth = depth - 1;
+  return { depth: newDepth, state, done: newDepth === 0 };
+}
+
+function processCharForBalance(
+  char: string,
+  depth: number,
+  state: CharState,
+  openChar: "[" | "{",
+  closeChar: "]" | "}",
+): { depth: number; state: CharState; done: boolean } {
+  if (state.inString)
+    return { depth, state: updateStringState(char, state), done: false };
+  return handleNonStringChar(char, depth, state, openChar, closeChar);
 }
 
 function extractBalancedJsonText(
@@ -55,31 +71,43 @@ function extractBalancedJsonText(
 
   for (let index = startIndex; index < source.length; index++) {
     const char = source[index];
+    const result = processCharForBalance(
+      char,
+      depth,
+      state,
+      openChar,
+      closeChar,
+    );
 
-    if (state.inString) {
-      state = updateStringState(char, state);
-      continue;
-    }
+    depth = result.depth;
+    state = result.state;
 
-    if (char === '"') {
-      state = { inString: true, escaped: false };
-      continue;
-    }
-
-    if (char === openChar) {
-      depth += 1;
-      continue;
-    }
-
-    if (char === closeChar) {
-      depth -= 1;
-      if (depth === 0) {
-        return source.slice(startIndex, index + 1);
-      }
+    if (result.done) {
+      return source.slice(startIndex, index + 1);
     }
   }
 
   return null;
+}
+
+function hasRequiredModelFields(model: ArtificialAnalysisModel): boolean {
+  return (
+    model.slug.length > 0 &&
+    model.reasoningModel === true &&
+    model.deprecated !== true
+  );
+}
+
+function hasValidScores(model: ArtificialAnalysisModel): boolean {
+  return isFiniteNumber(model.coding) && isFiniteNumber(model.agentic);
+}
+
+function isRankableModel(model: ArtificialAnalysisModel): boolean {
+  return hasRequiredModelFields(model) && hasValidScores(model);
+}
+
+function hasRankableReasoningModel(models: ArtificialAnalysisModel[]): boolean {
+  return models.some(isRankableModel);
 }
 
 function extractJsonArrayText(
@@ -115,20 +143,19 @@ function extractNextFlightPayloadChunks(html: string): string[] {
   return chunks;
 }
 
-function resolveModelName(rawModel: RawArtificialAnalysisModel): string | null {
-  const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
-  return name && name.trim().length > 0 ? name.trim() : null;
-}
-
 function resolveNumericField(value: unknown): number | null {
   return isFiniteNumber(value) ? value : null;
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
 }
 
 function resolveOutputTokens(raw: RawArtificialAnalysisModel): number | null {
   const tokenCounts = raw.intelligence_index_token_counts;
   if (!tokenCounts || typeof tokenCounts !== "object") return null;
   const value = tokenCounts.output_tokens;
-  return isFiniteNumber(value) && value > 0 ? value : null;
+  return isPositiveFiniteNumber(value) ? value : null;
 }
 
 function resolveDeprecated(
@@ -137,13 +164,34 @@ function resolveDeprecated(
   return typeof raw.deprecated === "boolean" ? raw.deprecated : undefined;
 }
 
+function resolveModelNameField(
+  rawModel: RawArtificialAnalysisModel,
+): string | null {
+  const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
+  return name?.trim() || null;
+}
+
+function resolveSlug(rawModel: RawArtificialAnalysisModel): string {
+  const slug = rawModel.slug;
+  if (typeof slug !== "string") return "";
+  return slug.trim();
+}
+
+function resolveReasoningModel(rawModel: RawArtificialAnalysisModel): boolean {
+  return rawModel.reasoning_model === true || rawModel.isReasoning === true;
+}
+
+function resolveFrontierModel(rawModel: RawArtificialAnalysisModel): boolean {
+  return rawModel.frontier_model === true;
+}
+
 function normalizeModel(
   rawModel: RawArtificialAnalysisModel,
 ): ArtificialAnalysisModel | null {
-  const model = resolveModelName(rawModel);
+  const model = resolveModelNameField(rawModel);
   if (!model) return null;
 
-  const slug = typeof rawModel.slug === "string" ? rawModel.slug.trim() : "";
+  const slug = resolveSlug(rawModel);
   if (slug.length === 0) return null;
 
   const deprecated = resolveDeprecated(rawModel);
@@ -151,9 +199,8 @@ function normalizeModel(
   return {
     slug,
     model,
-    reasoningModel:
-      rawModel.reasoning_model === true || rawModel.isReasoning === true,
-    frontierModel: rawModel.frontier_model === true,
+    reasoningModel: resolveReasoningModel(rawModel),
+    frontierModel: resolveFrontierModel(rawModel),
     agentic: resolveNumericField(rawModel.agentic_index),
     coding: resolveNumericField(rawModel.coding_index),
     blendedPrice: resolveNumericField(rawModel.price_1m_blended_3_to_1),
@@ -162,6 +209,30 @@ function normalizeModel(
     intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
+}
+
+function tryParseModelsArray(
+  decodedChunk: string,
+  arrayStartIndex: number,
+): ArtificialAnalysisModel[] {
+  const arrayText = extractJsonArrayText(decodedChunk, arrayStartIndex);
+  if (!arrayText) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(arrayText);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .filter((entry): entry is RawArtificialAnalysisModel => {
+      return !!entry && typeof entry === "object";
+    })
+    .map(normalizeModel)
+    .filter((entry): entry is ArtificialAnalysisModel => entry !== null);
 }
 
 function extractModelsFromModelsArray(
@@ -173,46 +244,30 @@ function extractModelsFromModelsArray(
   let modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
   while (modelKeyMatch !== null) {
     const arrayStartIndex = modelKeyMatch.index + modelKeyMatch[0].length - 1;
-    const arrayText = extractJsonArrayText(decodedChunk, arrayStartIndex);
-
-    if (!arrayText) {
-      modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(arrayText) as unknown;
-      if (!Array.isArray(parsed)) {
-        modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
-        continue;
-      }
-
-      const chunkModels = parsed
-        .filter((entry): entry is RawArtificialAnalysisModel => {
-          return !!entry && typeof entry === "object";
-        })
-        .map(normalizeModel)
-        .filter((entry): entry is ArtificialAnalysisModel => entry !== null);
-
-      models.push(...chunkModels);
-    } catch {
-      // Ignore malformed model arrays and continue scanning.
-    }
-
+    const chunkModels = tryParseModelsArray(decodedChunk, arrayStartIndex);
+    models.push(...chunkModels);
     modelKeyMatch = modelsKeyRegex.exec(decodedChunk);
   }
 
   return models;
 }
 
+function processBrace(
+  char: string,
+  braceCount: number,
+): { braceCount: number; foundStart: boolean } {
+  if (char === "}") return { braceCount: braceCount + 1, foundStart: false };
+  if (char !== "{") return { braceCount, foundStart: false };
+  if (braceCount === 0) return { braceCount, foundStart: true };
+  return { braceCount: braceCount - 1, foundStart: false };
+}
+
 function findObjectStart(source: string, fromIndex: number): number {
   let braceCount = 0;
   for (let i = fromIndex; i >= 0; i--) {
-    if (source[i] === "}") braceCount++;
-    if (source[i] === "{") {
-      if (braceCount === 0) return i;
-      braceCount--;
-    }
+    const result = processBrace(source[i], braceCount);
+    braceCount = result.braceCount;
+    if (result.foundStart) return i;
   }
   return fromIndex;
 }
@@ -238,6 +293,38 @@ function toPerformanceData(
   };
 }
 
+function parseRawModel(objectText: string): RawArtificialAnalysisModel | null {
+  try {
+    const parsed = JSON.parse(objectText) as unknown;
+    if (typeof parsed !== "object" || parsed === null) {
+      return null;
+    }
+    return parsed as RawArtificialAnalysisModel;
+  } catch {
+    return null;
+  }
+}
+
+function tryAddPerformanceEntry(
+  models: PerformanceData[],
+  decodedChunk: string,
+  match: RegExpExecArray,
+): boolean {
+  const objectStartIndex = findObjectStart(decodedChunk, match.index);
+  const objectText = extractJsonObjectText(decodedChunk, objectStartIndex);
+  if (!objectText) return false;
+
+  const parsed = parseRawModel(objectText);
+  if (!parsed) return false;
+
+  const entry = toPerformanceData(parsed);
+  if (entry) {
+    models.push(entry);
+    return true;
+  }
+  return false;
+}
+
 function extractPerformanceDataFromChunk(
   decodedChunk: string,
 ): PerformanceData[] {
@@ -246,30 +333,31 @@ function extractPerformanceDataFromChunk(
 
   let match = performanceRegex.exec(decodedChunk);
   while (match !== null) {
-    const objectStartIndex = findObjectStart(decodedChunk, match.index);
-    const objectText = extractJsonObjectText(decodedChunk, objectStartIndex);
-    if (!objectText) {
-      match = performanceRegex.exec(decodedChunk);
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(objectText) as unknown;
-      if (typeof parsed !== "object" || parsed === null) {
-        match = performanceRegex.exec(decodedChunk);
-        continue;
-      }
-
-      const entry = toPerformanceData(parsed as RawArtificialAnalysisModel);
-      if (entry) models.push(entry);
-    } catch {
-      // Ignore malformed objects and continue scanning.
-    }
-
+    tryAddPerformanceEntry(models, decodedChunk, match);
     match = performanceRegex.exec(decodedChunk);
   }
 
   return models;
+}
+
+function tryAddModelEntry(
+  models: ArtificialAnalysisModel[],
+  source: string,
+  match: RegExpExecArray,
+): boolean {
+  const objectStartIndex = findObjectStart(source, match.index);
+  const objectText = extractJsonObjectText(source, objectStartIndex);
+  if (!objectText) return false;
+
+  const parsed = parseRawModel(objectText);
+  if (!parsed) return false;
+
+  const entry = normalizeModel(parsed);
+  if (entry) {
+    models.push(entry);
+    return true;
+  }
+  return false;
 }
 
 function extractModelsFromPerformanceObjects(
@@ -280,26 +368,7 @@ function extractModelsFromPerformanceObjects(
 
   let match = performanceRegex.exec(source);
   while (match !== null) {
-    const objectStartIndex = findObjectStart(source, match.index);
-    const objectText = extractJsonObjectText(source, objectStartIndex);
-    if (!objectText) {
-      match = performanceRegex.exec(source);
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(objectText) as unknown;
-      if (typeof parsed !== "object" || parsed === null) {
-        match = performanceRegex.exec(source);
-        continue;
-      }
-
-      const entry = normalizeModel(parsed as RawArtificialAnalysisModel);
-      if (entry) models.push(entry);
-    } catch {
-      // Ignore malformed objects and continue scanning.
-    }
-
+    tryAddModelEntry(models, source, match);
     match = performanceRegex.exec(source);
   }
 
@@ -394,19 +463,17 @@ function mergeEmbeddedIntoModels(
   return merged;
 }
 
-function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
-  const embeddedPerformanceModels = uniqueModelsBySlug(
-    extractEmbeddedPerformanceModelsFromHtml(html),
-  );
-  const payloadChunks = extractNextFlightPayloadChunks(html);
-  if (payloadChunks.length === 0) {
-    if (embeddedPerformanceModels.length > 0) {
-      return embeddedPerformanceModels;
-    }
+function getPrimaryFallback(
+  embeddedPerformanceModels: ArtificialAnalysisModel[],
+): ArtificialAnalysisModel[] | null {
+  if (embeddedPerformanceModels.length === 0) return null;
+  return embeddedPerformanceModels;
+}
 
-    throw new AiParseError("Unable to locate Next.js flight payload");
-  }
-
+function mergePayloadData(payloadChunks: string[]): {
+  metadataModels: ArtificialAnalysisModel[];
+  performanceData: PerformanceData[];
+} {
   const metadataModels: ArtificialAnalysisModel[] = [];
   const performanceData: PerformanceData[] = [];
 
@@ -415,26 +482,50 @@ function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
     performanceData.push(...extractPerformanceDataFromChunk(chunk));
   }
 
+  return { metadataModels, performanceData };
+}
+
+function selectFinalModels(
+  uniqueMetadataModels: ArtificialAnalysisModel[],
+  performanceData: PerformanceData[],
+  embeddedPerformanceModels: ArtificialAnalysisModel[],
+): ArtificialAnalysisModel[] | null {
+  if (uniqueMetadataModels.length === 0)
+    return getPrimaryFallback(embeddedPerformanceModels);
+  if (performanceData.length === 0) return uniqueMetadataModels;
+  return mergeModelData(uniqueMetadataModels, performanceData);
+}
+
+function buildModelsFromPayload(
+  html: string,
+  embeddedPerformanceModels: ArtificialAnalysisModel[],
+): ArtificialAnalysisModel[] | null {
+  const payloadChunks = extractNextFlightPayloadChunks(html);
+  if (payloadChunks.length === 0)
+    return getPrimaryFallback(embeddedPerformanceModels);
+
+  const { metadataModels, performanceData } = mergePayloadData(payloadChunks);
   const uniqueMetadataModels = uniqueModelsBySlug(metadataModels);
+  const primaryModels = selectFinalModels(
+    uniqueMetadataModels,
+    performanceData,
+    embeddedPerformanceModels,
+  );
+  if (primaryModels === null) return null;
 
-  let finalModels: ArtificialAnalysisModel[];
-  if (uniqueMetadataModels.length > 0 && performanceData.length > 0) {
-    finalModels = mergeModelData(uniqueMetadataModels, performanceData);
-  } else if (uniqueMetadataModels.length > 0) {
-    finalModels = uniqueMetadataModels;
-  } else if (embeddedPerformanceModels.length > 0) {
-    finalModels = embeddedPerformanceModels;
-  } else {
+  return mergeEmbeddedIntoModels(primaryModels, embeddedPerformanceModels);
+}
+
+function parseModelsFromHtml(html: string): ArtificialAnalysisModel[] {
+  const embeddedPerformanceModels = uniqueModelsBySlug(
+    extractEmbeddedPerformanceModelsFromHtml(html),
+  );
+
+  const models = buildModelsFromPayload(html, embeddedPerformanceModels);
+  if (models === null)
     throw new AiParseError("Unable to locate models data in payload");
-  }
-
-  finalModels = mergeEmbeddedIntoModels(finalModels, embeddedPerformanceModels);
-
-  if (finalModels.length === 0) {
-    throw new AiParseError("Models data is empty");
-  }
-
-  return finalModels;
+  if (models.length === 0) throw new AiParseError("Models data is empty");
+  return models;
 }
 
 export class ArtificialAnalysisClient {
