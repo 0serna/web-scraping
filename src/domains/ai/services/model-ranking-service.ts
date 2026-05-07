@@ -23,9 +23,9 @@ function isRankableReasoningModel(
 interface ScoredModel {
   model: string;
   internalScore: number;
-  coding: number;
-  agentic: number;
-  rawOutputTokens: number | null;
+  normalizedCoding: number;
+  normalizedAgentic: number;
+  outputTokens: number | null;
   output: number | null;
 }
 
@@ -39,18 +39,37 @@ type RankableModel = ArtificialAnalysisModel & {
 function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   if (right.internalScore !== left.internalScore)
     return right.internalScore - left.internalScore;
-  if (right.agentic !== left.agentic) return right.agentic - left.agentic;
-  if (right.coding !== left.coding) return right.coding - left.coding;
-  const leftOutput = left.rawOutputTokens ?? Infinity;
-  const rightOutput = right.rawOutputTokens ?? Infinity;
+  if (right.normalizedAgentic !== left.normalizedAgentic)
+    return right.normalizedAgentic - left.normalizedAgentic;
+  if (right.normalizedCoding !== left.normalizedCoding)
+    return right.normalizedCoding - left.normalizedCoding;
+  const leftOutput = left.outputTokens ?? Infinity;
+  const rightOutput = right.outputTokens ?? Infinity;
   if (leftOutput !== rightOutput) return leftOutput - rightOutput;
   return left.model.localeCompare(right.model);
 }
 
-function calculateBaseScore(model: RankableModel): number {
+function getNormalizationMaxima(models: RankableModel[]) {
+  return models.reduce(
+    (maxima, model) => ({
+      maxCoding: Math.max(maxima.maxCoding, model.coding),
+      maxAgentic: Math.max(maxima.maxAgentic, model.agentic),
+    }),
+    {
+      maxCoding: Number.NEGATIVE_INFINITY,
+      maxAgentic: Number.NEGATIVE_INFINITY,
+    },
+  );
+}
+
+function normalizeScore(value: number, maxValue: number): number {
+  if (maxValue <= 0) return 0;
+  return (value / maxValue) * 100;
+}
+
+function calculateBaseScore(coding: number, agentic: number): number {
   return (
-    model.coding * WEIGHT_INTELLIGENCE_CODING +
-    model.agentic * WEIGHT_INTELLIGENCE_AGENTIC
+    coding * WEIGHT_INTELLIGENCE_CODING + agentic * WEIGHT_INTELLIGENCE_AGENTIC
   );
 }
 
@@ -85,18 +104,23 @@ function calculateAdjustedScore(
   return baseScore * (1 + adjustment);
 }
 
-function toScoredModel(model: RankableModel): ScoredModel {
-  const baseScore = calculateBaseScore(model);
-  const rawOutputTokens = toValidOutputTokens(
-    model.intelligenceIndexOutputTokens,
-  );
+function toScoredModel(
+  model: RankableModel,
+  maxCoding: number,
+  maxAgentic: number,
+): ScoredModel {
+  const normalizedCoding = normalizeScore(model.coding, maxCoding);
+  const normalizedAgentic = normalizeScore(model.agentic, maxAgentic);
+  const baseScore = calculateBaseScore(normalizedCoding, normalizedAgentic);
+  const outputTokens = toValidOutputTokens(model.intelligenceIndexOutputTokens);
+
   return {
     model: model.model,
-    internalScore: calculateAdjustedScore(baseScore, rawOutputTokens),
-    coding: model.coding,
-    agentic: model.agentic,
-    rawOutputTokens,
-    output: toRoundedMillions(rawOutputTokens),
+    internalScore: calculateAdjustedScore(baseScore, outputTokens),
+    normalizedCoding,
+    normalizedAgentic,
+    outputTokens,
+    output: toRoundedMillions(outputTokens),
   };
 }
 
@@ -121,13 +145,17 @@ export class ModelRankingService {
           ),
       );
 
-    const scoredModels = rankableModels.map(toScoredModel);
-
-    if (scoredModels.length === 0) {
+    if (rankableModels.length === 0) {
       throw new AiParseError(
         "No reasoning models with slug, coding, and agentic scores were found",
       );
     }
+
+    const { maxCoding, maxAgentic } = getNormalizationMaxima(rankableModels);
+
+    const scoredModels = rankableModels.map((model) =>
+      toScoredModel(model, maxCoding, maxAgentic),
+    );
 
     const rankedModels = scoredModels.sort(compareFinalModels);
 

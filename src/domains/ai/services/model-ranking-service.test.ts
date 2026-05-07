@@ -77,7 +77,7 @@ function outputTokenRankingModel(
 }
 
 describe("ModelRankingService", () => {
-  it("filters models without required fields and ranks by base score", async () => {
+  it("filters models without required fields and ranks by normalized base score", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -120,7 +120,29 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({ model: "Model B", score: 100 }),
-      rankedModel({ model: "Model A", score: 74 }),
+      rankedModel({ model: "Model A", score: 78 }),
+    ]);
+  });
+
+  it("normalizes coding and agentic scores across the eligible set before weighting", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "coding-leader",
+        model: "Coding Leader",
+        agentic: 80,
+        coding: 100,
+      }),
+      rankingModel({
+        slug: "agentic-leader",
+        model: "Agentic Leader",
+        agentic: 100,
+        coding: 60,
+      }),
+    ]);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      rankedModel({ model: "Agentic Leader", score: 100 }),
+      rankedModel({ model: "Coding Leader", score: 98 }),
     ]);
   });
 
@@ -208,7 +230,7 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Model A",
-        score: 93,
+        score: 97,
         output: null,
       },
       {
@@ -219,7 +241,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("uses tie-breakers for stable ordering", async () => {
+  it("uses normalized tie-breakers for stable ordering", async () => {
     const tiedRows = [
       {
         slug: "model-x-cheap",
@@ -276,17 +298,52 @@ describe("ModelRankingService", () => {
     const modelXA = rankingA.find((entry) => entry.model === "Model X");
     const modelXB = rankingB.find((entry) => entry.model === "Model X");
 
-    expect(modelXA).toEqual({
-      model: "Model X",
-      score: 100,
-      output: null,
-    });
-    expect(modelXB).toEqual({
-      model: "Model X",
-      score: 100,
-      output: null,
-    });
+    expect(modelXA).toEqual(modelXB);
     expect(rankingA).toEqual(rankingB);
+    expect(rankingA[0].model).toBe("Model Y");
+    expect(rankingA[1]).toEqual({
+      model: "Model X",
+      score: 99,
+      output: null,
+    });
+  });
+
+  it("prefers higher normalized agentic score before normalized coding in ties", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "higher-agentic",
+        model: "Higher Agentic",
+        agentic: 90,
+        coding: 50,
+      }),
+      rankingModel({
+        slug: "higher-coding",
+        model: "Higher Coding",
+        agentic: 60,
+        coding: 190,
+      }),
+      rankingModel({
+        slug: "max-agentic-anchor",
+        model: "Max Agentic Anchor",
+        agentic: 100,
+        coding: 0,
+      }),
+      rankingModel({
+        slug: "max-coding-anchor",
+        model: "Max Coding Anchor",
+        agentic: 0,
+        coding: 200,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking.map((entry) => entry.model)).toEqual([
+      "Higher Agentic",
+      "Higher Coding",
+      "Max Agentic Anchor",
+      "Max Coding Anchor",
+    ]);
   });
 
   it("returns 100 for the top-ranked model", async () => {
@@ -797,7 +854,7 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toEqual([
       rankedModel({ model: "Model Efficient", score: 100, output: 10 }),
-      rankedModel({ model: "Model Threshold", score: 88, output: 100 }),
+      rankedModel({ model: "Model Threshold", score: 90, output: 100 }),
     ]);
   });
 
@@ -821,7 +878,7 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toEqual([
       rankedModel({ model: "Model Higher Base", score: 100, output: null }),
-      rankedModel({ model: "Model Threshold", score: 97, output: 100 }),
+      rankedModel({ model: "Model Threshold", score: 95, output: 100 }),
     ]);
   });
 
@@ -852,7 +909,37 @@ describe("ModelRankingService", () => {
     expect(ranking[0].model).toBe("Model Efficient");
     expect(ranking[0].score).toBe(100);
     expect(ranking[1].model).toBe("Model High Base");
-    expect(ranking[1].score).toBe(85);
+    expect(ranking[1].score).toBe(94);
+  });
+
+  it("applies output-efficiency adjustment after normalized weighting", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "higher-normalized-base",
+        model: "Higher Normalized Base",
+        agentic: 100,
+        coding: 60,
+        intelligenceIndexOutputTokens: 200_000_000,
+      }),
+      rankingModel({
+        slug: "lower-base-more-efficient",
+        model: "Lower Base More Efficient",
+        agentic: 95,
+        coding: 60,
+        intelligenceIndexOutputTokens: 1,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      rankedModel({
+        model: "Lower Base More Efficient",
+        score: 100,
+        output: 0,
+      }),
+      rankedModel({ model: "Higher Normalized Base", score: 85, output: 200 }),
+    ]);
   });
 
   it("applies a capped penalty above the threshold", async () => {
@@ -873,7 +960,7 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toEqual([
       rankedModel({ model: "Model Threshold", score: 100, output: 100 }),
-      rankedModel({ model: "Model Penalized", score: 85, output: 400 }),
+      rankedModel({ model: "Model Penalized", score: 92, output: 400 }),
     ]);
   });
 
@@ -1029,8 +1116,8 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking).toEqual([
-      rankedModel({ model: "Model Valid Output", score: 100, output: 100 }),
       rankedModel({ model: "Model Missing Output", score: 100, output: null }),
+      rankedModel({ model: "Model Valid Output", score: 98, output: 100 }),
     ]);
   });
 
