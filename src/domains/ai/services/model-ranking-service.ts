@@ -6,7 +6,7 @@ const WEIGHT_INTELLIGENCE_AGENTIC = 0.7;
 const WEIGHT_INTELLIGENCE_CODING = 0.3;
 const OUTPUT_EFFICIENCY_MAX_ADJUSTMENT = 0.1;
 const OUTPUT_EFFICIENCY_THRESHOLD_TOKENS = 80_000_000;
-const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
+export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [];
 
 function isRankableReasoningModel(
   model: ArtificialAnalysisModel,

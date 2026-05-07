@@ -140,10 +140,9 @@ The system SHALL apply the slug prefix exclusion filter after the reasoning mode
 
 #### Scenario: Excluded models are filtered before scoring
 
-- **WHEN** Artificial Analysis returns models including Claude models with `reasoning_model: true`
-- **AND** the exclusion blocklist contains `"claude"`
-- **THEN** the system SHALL exclude Claude models before calculating internal scores
-- **AND** the remaining models SHALL be scored and ranked as if Claude models were never present
+- **WHEN** Artificial Analysis returns reasoning models whose slugs start with a configured excluded prefix
+- **THEN** the system SHALL exclude those models before calculating internal scores
+- **AND** the remaining models SHALL be scored and ranked as if the excluded models were never present
 
 #### Scenario: Excluded model that would have been top-ranked
 

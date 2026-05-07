@@ -112,6 +112,20 @@ function expectFreshReasoning(result: ArtificialAnalysisModel[]) {
   );
 }
 
+async function expectCachedModelsRejected(
+  staleModels: ArtificialAnalysisModel[],
+) {
+  const { ArtificialAnalysisClient, fetchWithTimeout } =
+    await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
+      if (validator(staleModels)) return staleModels;
+      const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
+      mockHtmlResponse(fetchWithTimeout, freshHtml);
+      return fetcher();
+    });
+
+  expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
+}
+
 function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
   return {
     slug,
@@ -861,15 +875,7 @@ describe("ArtificialAnalysisClient", () => {
       }),
     ];
 
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
-        if (validator(staleModels)) return staleModels;
-        const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
-        mockHtmlResponse(fetchWithTimeout, freshHtml);
-        return fetcher();
-      });
-
-    expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
+    await expectCachedModelsRejected(staleModels);
   });
 
   it("rejects cached reasoning model without coding score", async () => {
@@ -888,15 +894,7 @@ describe("ArtificialAnalysisClient", () => {
       },
     ];
 
-    const { ArtificialAnalysisClient, fetchWithTimeout } =
-      await loadArtificialAnalysisClient(async (_key, fetcher, validator) => {
-        if (validator(staleModels)) return staleModels;
-        const freshHtml = buildHtmlWithModels([freshReasoningRawModel()]);
-        mockHtmlResponse(fetchWithTimeout, freshHtml);
-        return fetcher();
-      });
-
-    expectFreshReasoning(await getModelsFromClient(ArtificialAnalysisClient));
+    await expectCachedModelsRejected(staleModels);
   });
 
   it("fills scores from embedded performance data into metadata models by slug", async () => {

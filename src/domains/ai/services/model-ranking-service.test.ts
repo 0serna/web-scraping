@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
-import { ModelRankingService } from "./model-ranking-service.js";
+import {
+  EXCLUDED_SLUG_PREFIXES,
+  ModelRankingService,
+} from "./model-ranking-service.js";
+
+const hasExcludedSlugPrefixes = EXCLUDED_SLUG_PREFIXES.length > 0;
 
 function rankingModel(
   overrides: Partial<ArtificialAnalysisModel> &
@@ -35,10 +40,12 @@ function rankedModel(
   };
 }
 
-function excludedClaudeModel(score = 90): ArtificialAnalysisModel {
+function excludedPrefixModel(score = 90): ArtificialAnalysisModel {
+  const excludedSlugPrefix = EXCLUDED_SLUG_PREFIXES[0] ?? "excluded-prefix";
+
   return rankingModel({
-    slug: "claude-4-sonnet",
-    model: "Claude 4 Sonnet",
+    slug: `${excludedSlugPrefix}-candidate`,
+    model: "Excluded Prefix Candidate",
     agentic: score,
     coding: score,
     blendedPrice: 0.5,
@@ -672,23 +679,38 @@ describe("ModelRankingService", () => {
 
   it("excludes models with excluded slug prefix", async () => {
     const service = createServiceForModels([
-      excludedClaudeModel(),
+      excludedPrefixModel(),
       gpt55Model(),
     ]);
 
-    await expect(service.getRanking()).resolves.toEqual([
-      {
-        model: "GPT-5.5",
-        score: 100,
-        output: null,
-      },
-    ]);
+    await expect(service.getRanking()).resolves.toEqual(
+      hasExcludedSlugPrefixes
+        ? [
+            {
+              model: "GPT-5.5",
+              score: 100,
+              output: null,
+            },
+          ]
+        : [
+            {
+              model: "Excluded Prefix Candidate",
+              score: 100,
+              output: null,
+            },
+            {
+              model: "GPT-5.5",
+              score: 74,
+              output: null,
+            },
+          ],
+    );
   });
 
-  it("excludes claude models but keeps other reasoning models", async () => {
+  it("excludes models with configured slug prefixes but keeps other reasoning models", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
-        excludedClaudeModel(),
+        excludedPrefixModel(),
         rankingModel({
           slug: "gemini-2-pro",
           model: "Gemini 2 Pro",
@@ -704,36 +726,71 @@ describe("ModelRankingService", () => {
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
 
-    await expect(service.getRanking()).resolves.toEqual([
-      {
-        model: "GPT-5.5",
-        score: 100,
-        output: null,
-      },
-      {
-        model: "Gemini 2 Pro",
-        score: 87,
-        output: null,
-      },
-    ]);
+    await expect(service.getRanking()).resolves.toEqual(
+      hasExcludedSlugPrefixes
+        ? [
+            {
+              model: "GPT-5.5",
+              score: 100,
+              output: null,
+            },
+            {
+              model: "Gemini 2 Pro",
+              score: 87,
+              output: null,
+            },
+          ]
+        : [
+            {
+              model: "Excluded Prefix Candidate",
+              score: 100,
+              output: null,
+            },
+            {
+              model: "GPT-5.5",
+              score: 86,
+              output: null,
+            },
+            {
+              model: "Gemini 2 Pro",
+              score: 74,
+              output: null,
+            },
+          ],
+    );
   });
 
   it("ranks next model first when top model is excluded", async () => {
     const artificialAnalysisClient = {
       getModels: vi
         .fn()
-        .mockResolvedValue([excludedClaudeModel(100), gpt55Model()]),
+        .mockResolvedValue([excludedPrefixModel(100), gpt55Model()]),
     };
 
     const service = new ModelRankingService(artificialAnalysisClient as never);
 
-    await expect(service.getRanking()).resolves.toEqual([
-      {
-        model: "GPT-5.5",
-        score: 100,
-        output: null,
-      },
-    ]);
+    await expect(service.getRanking()).resolves.toEqual(
+      hasExcludedSlugPrefixes
+        ? [
+            {
+              model: "GPT-5.5",
+              score: 100,
+              output: null,
+            },
+          ]
+        : [
+            {
+              model: "Excluded Prefix Candidate",
+              score: 100,
+              output: null,
+            },
+            {
+              model: "GPT-5.5",
+              score: 67,
+              output: null,
+            },
+          ],
+    );
   });
 
   it("excludes deprecated models before calculating relative scores", async () => {
