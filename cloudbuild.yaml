@@ -39,6 +39,8 @@ steps:
       - "1"
       - "--timeout"
       - "60s"
+      - "--set-env-vars"
+      - "API_KEY=${_API_KEY},UPSTASH_REDIS_TOKEN=${_UPSTASH_REDIS_TOKEN},UPSTASH_REDIS_URL=${_UPSTASH_REDIS_URL}"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA"
