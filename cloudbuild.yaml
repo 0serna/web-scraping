@@ -29,6 +29,16 @@ steps:
       - "${_REGION}"
       - "--platform"
       - "managed"
+      - "--memory"
+      - "256Mi"
+      - "--min-instances"
+      - "0"
+      - "--max-instances"
+      - "1"
+      - "--concurrency"
+      - "1"
+      - "--timeout"
+      - "60s"
 
 images:
   - "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA"
