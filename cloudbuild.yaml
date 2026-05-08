@@ -48,7 +48,7 @@ images:
 
 substitutions:
   _REGION: us-central1
-  _REPOSITORY: web-scraping
+  _REPOSITORY: cloud-run-source-deploy
   _IMAGE: web-scraping
   _SERVICE: web-scraping
 
