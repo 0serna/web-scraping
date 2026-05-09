@@ -31,12 +31,12 @@ function createServiceForModels(models: ArtificialAnalysisModel[]) {
 function rankedModel(
   overrides: Pick<RankedModel, "model" | "score"> & Partial<RankedModel>,
 ): RankedModel {
-  const { model, score, output = null } = overrides;
+  const { model, score, tokens = null } = overrides;
 
   return {
     model,
     score,
-    output,
+    tokens,
   };
 }
 
@@ -63,23 +63,6 @@ function gpt55Model(agentic = 70, coding = 60): ArtificialAnalysisModel {
     blendedPrice: 0.25,
     inputPrice: 0.2,
     outputPrice: 0.4,
-  });
-}
-
-function outputTokenRankingModel(
-  slug: string,
-  model: string,
-  outputTokens: number,
-): ArtificialAnalysisModel {
-  return rankingModel({
-    slug,
-    model,
-    agentic: 80,
-    coding: 70,
-    blendedPrice: outputTokens < 20000 ? 0.25 : 0.5,
-    inputPrice: outputTokens < 20000 ? 0.15 : 0.3,
-    outputPrice: outputTokens < 20000 ? 0.3 : 0.7,
-    intelligenceIndexOutputTokens: outputTokens,
   });
 }
 
@@ -127,7 +110,7 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({ model: "Model B", score: 100 }),
-      rankedModel({ model: "Model A", score: 78 }),
+      rankedModel({ model: "Model A", score: 84 }),
     ]);
   });
 
@@ -148,8 +131,8 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Agentic Leader", score: 100 }),
-      rankedModel({ model: "Coding Leader", score: 98 }),
+      rankedModel({ model: "Coding Leader", score: 100 }),
+      rankedModel({ model: "Agentic Leader", score: 95 }),
     ]);
   });
 
@@ -233,17 +216,17 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        output: null,
+        tokens: null,
       },
       {
         model: "Model A",
-        score: 97,
-        output: null,
+        score: 96,
+        tokens: null,
       },
       {
         model: "Model B",
-        score: 91,
-        output: null,
+        score: 88,
+        tokens: null,
       },
     ]);
   });
@@ -310,8 +293,8 @@ describe("ModelRankingService", () => {
     expect(rankingA[0].model).toBe("Model Y");
     expect(rankingA[1]).toEqual({
       model: "Model X",
-      score: 99,
-      output: null,
+      score: 97,
+      tokens: null,
     });
   });
 
@@ -346,8 +329,8 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking.map((entry) => entry.model)).toEqual([
-      "Higher Agentic",
       "Higher Coding",
+      "Higher Agentic",
       "Max Agentic Anchor",
       "Max Coding Anchor",
     ]);
@@ -370,7 +353,7 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        output: null,
+        tokens: null,
       },
     ]);
   });
@@ -456,7 +439,7 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        output: null,
+        tokens: null,
       },
     ]);
   });
@@ -495,12 +478,12 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Non-Frontier",
         score: 100,
-        output: null,
+        tokens: null,
       },
       {
         model: "Reasoning Frontier",
-        score: 81,
-        output: null,
+        score: 80,
+        tokens: null,
       },
     ]);
   });
@@ -539,7 +522,7 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Model",
         score: 100,
-        output: null,
+        tokens: null,
       },
     ]);
   });
@@ -591,12 +574,12 @@ describe("ModelRankingService", () => {
       {
         model: "Reasoning Expensive",
         score: 100,
-        output: null,
+        tokens: null,
       },
       {
         model: "Reasoning Cheap",
         score: 63,
-        output: null,
+        tokens: null,
       },
     ]);
   });
@@ -689,19 +672,19 @@ describe("ModelRankingService", () => {
             {
               model: "GPT-5.5",
               score: 100,
-              output: null,
+              tokens: null,
             },
           ]
         : [
             {
               model: "Excluded Prefix Candidate",
               score: 100,
-              output: null,
+              tokens: null,
             },
             {
               model: "GPT-5.5",
-              score: 74,
-              output: null,
+              score: 73,
+              tokens: null,
             },
           ],
     );
@@ -732,29 +715,29 @@ describe("ModelRankingService", () => {
             {
               model: "GPT-5.5",
               score: 100,
-              output: null,
+              tokens: null,
             },
             {
               model: "Gemini 2 Pro",
               score: 87,
-              output: null,
+              tokens: null,
             },
           ]
         : [
             {
               model: "Excluded Prefix Candidate",
               score: 100,
-              output: null,
+              tokens: null,
             },
             {
               model: "GPT-5.5",
-              score: 86,
-              output: null,
+              score: 84,
+              tokens: null,
             },
             {
               model: "Gemini 2 Pro",
-              score: 74,
-              output: null,
+              score: 73,
+              tokens: null,
             },
           ],
     );
@@ -775,19 +758,19 @@ describe("ModelRankingService", () => {
             {
               model: "GPT-5.5",
               score: 100,
-              output: null,
+              tokens: null,
             },
           ]
         : [
             {
               model: "Excluded Prefix Candidate",
               score: 100,
-              output: null,
+              tokens: null,
             },
             {
               model: "GPT-5.5",
-              score: 67,
-              output: null,
+              score: 66,
+              tokens: null,
             },
           ],
     );
@@ -887,137 +870,13 @@ describe("ModelRankingService", () => {
       {
         model: "Model A",
         score: 100,
-        output: null,
+        tokens: null,
       },
       {
         model: "Model B",
         score: 90,
-        output: null,
+        tokens: null,
       },
-    ]);
-  });
-
-  it("applies positive output-efficiency adjustment below the threshold", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-threshold",
-        "Model Threshold",
-        100_000_000,
-      ),
-      outputTokenRankingModel("model-efficient", "Model Efficient", 10_000_000),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({ model: "Model Efficient", score: 100, output: 10 }),
-      rankedModel({ model: "Model Threshold", score: 90, output: 100 }),
-    ]);
-  });
-
-  it("treats threshold output tokens as a neutral adjustment", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-threshold",
-        "Model Threshold",
-        100_000_000,
-      ),
-      rankingModel({
-        slug: "model-higher-base",
-        model: "Model Higher Base",
-        agentic: 82,
-        coding: 72,
-        intelligenceIndexOutputTokens: null,
-      }),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({ model: "Model Higher Base", score: 100, output: null }),
-      rankedModel({ model: "Model Threshold", score: 95, output: 100 }),
-    ]);
-  });
-
-  it("applies bounded efficiency adjustment that can promote token-efficient model", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        rankingModel({
-          slug: "model-high-base",
-          model: "Model High Base",
-          agentic: 90,
-          coding: 80,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-          intelligenceIndexOutputTokens: 200_000_000,
-        }),
-        outputTokenRankingModel(
-          "model-efficient",
-          "Model Efficient",
-          10_000_000,
-        ),
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
-    const ranking = await service.getRanking();
-
-    expect(ranking[0].model).toBe("Model Efficient");
-    expect(ranking[0].score).toBe(100);
-    expect(ranking[1].model).toBe("Model High Base");
-    expect(ranking[1].score).toBe(94);
-  });
-
-  it("applies output-efficiency adjustment after normalized weighting", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "higher-normalized-base",
-        model: "Higher Normalized Base",
-        agentic: 100,
-        coding: 60,
-        intelligenceIndexOutputTokens: 200_000_000,
-      }),
-      rankingModel({
-        slug: "lower-base-more-efficient",
-        model: "Lower Base More Efficient",
-        agentic: 95,
-        coding: 60,
-        intelligenceIndexOutputTokens: 1,
-      }),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({
-        model: "Lower Base More Efficient",
-        score: 100,
-        output: 0,
-      }),
-      rankedModel({ model: "Higher Normalized Base", score: 85, output: 200 }),
-    ]);
-  });
-
-  it("applies a capped penalty above the threshold", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-threshold",
-        "Model Threshold",
-        100_000_000,
-      ),
-      outputTokenRankingModel(
-        "model-penalized",
-        "Model Penalized",
-        400_000_000,
-      ),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({ model: "Model Threshold", score: 100, output: 100 }),
-      rankedModel({ model: "Model Penalized", score: 92, output: 400 }),
     ]);
   });
 
@@ -1075,8 +934,8 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking).toEqual([
-      rankedModel({ model: "Model Invalid Output", score: 100, output: null }),
-      rankedModel({ model: "Model Zero Output", score: 77, output: null }),
+      rankedModel({ model: "Model Invalid Output", score: 100, tokens: null }),
+      rankedModel({ model: "Model Zero Output", score: 77, tokens: null }),
     ]);
   });
 
@@ -1111,73 +970,6 @@ describe("ModelRankingService", () => {
     expect(ranking[1].model).toBe("Model A");
   });
 
-  it("ranks lower-output model higher when base scores are equal via output-efficiency adjustment", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-inefficient",
-        "Model A Inefficient",
-        50_000_000,
-      ),
-      outputTokenRankingModel(
-        "model-efficient",
-        "Model B Efficient",
-        10_000_000,
-      ),
-    ]);
-    const ranking = await service.getRanking();
-
-    expect(ranking[0].model).toBe("Model B Efficient");
-    expect(ranking[0].score).toBe(100);
-    expect(ranking[1].model).toBe("Model A Inefficient");
-    expect(ranking[1].score).toBe(95);
-  });
-
-  it("prefers lower valid output-token counts when adjusted score and other tie-breaks are equal", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-higher-output",
-        "Model Higher Output",
-        400_000_000,
-      ),
-      outputTokenRankingModel(
-        "model-lower-output",
-        "Model Lower Output",
-        200_000_000,
-      ),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({ model: "Model Lower Output", score: 100, output: 200 }),
-      rankedModel({ model: "Model Higher Output", score: 100, output: 400 }),
-    ]);
-  });
-
-  it("sorts lower valid output-token counts ahead of missing data when all prior tie-breaks are equal", async () => {
-    const service = createServiceForModels([
-      outputTokenRankingModel(
-        "model-valid-output",
-        "Model Valid Output",
-        100_000_000,
-      ),
-      rankingModel({
-        slug: "model-missing-output",
-        model: "Model Missing Output",
-        agentic: 80,
-        coding: 70,
-        intelligenceIndexOutputTokens: null,
-      }),
-    ]);
-
-    const ranking = await service.getRanking();
-
-    expect(ranking).toEqual([
-      rankedModel({ model: "Model Missing Output", score: 100, output: null }),
-      rankedModel({ model: "Model Valid Output", score: 98, output: 100 }),
-    ]);
-  });
-
   it("includes rounded output from source model in ranking", async () => {
     const service = createServiceForModels([
       rankingModel({
@@ -1195,7 +987,7 @@ describe("ModelRankingService", () => {
       {
         model: "Model With Output Tokens",
         score: 100,
-        output: 25,
+        tokens: 25,
       },
     ]);
   });
@@ -1217,7 +1009,7 @@ describe("ModelRankingService", () => {
       {
         model: "Model No Output Tokens",
         score: 100,
-        output: null,
+        tokens: null,
       },
     ]);
   });
@@ -1285,7 +1077,7 @@ describe("ModelRankingService", () => {
       {
         model: "Dated Model",
         score: 100,
-        output: null,
+        tokens: null,
       },
     ]);
     expect(ranking[0]).not.toHaveProperty("date");

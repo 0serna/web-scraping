@@ -2,10 +2,8 @@ import { AiParseError } from "../types/errors.js";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-const WEIGHT_INTELLIGENCE_AGENTIC = 0.7;
-const WEIGHT_INTELLIGENCE_CODING = 0.3;
-const OUTPUT_EFFICIENCY_MAX_ADJUSTMENT = 0.1;
-const OUTPUT_EFFICIENCY_THRESHOLD_TOKENS = 80_000_000;
+const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
+const WEIGHT_INTELLIGENCE_CODING = 0.4;
 export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [];
 
 function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
@@ -28,8 +26,7 @@ interface ScoredModel {
   internalScore: number;
   normalizedCoding: number;
   normalizedAgentic: number;
-  outputTokens: number | null;
-  output: number | null;
+  tokens: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
@@ -57,13 +54,6 @@ function compareNormalizedCoding(
   return right.normalizedCoding - left.normalizedCoding;
 }
 
-function compareOutputTokens(left: ScoredModel, right: ScoredModel): number {
-  const leftOutput = left.outputTokens ?? Infinity;
-  const rightOutput = right.outputTokens ?? Infinity;
-  if (leftOutput !== rightOutput) return leftOutput - rightOutput;
-  return 0;
-}
-
 function compareModelName(left: ScoredModel, right: ScoredModel): number {
   return left.model.localeCompare(right.model);
 }
@@ -73,7 +63,6 @@ function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
     compareInternalScore,
     compareNormalizedAgentic,
     compareNormalizedCoding,
-    compareOutputTokens,
     compareModelName,
   ];
 
@@ -119,27 +108,6 @@ function toRoundedMillions(value: number | null): number | null {
   return Math.round(value / 1_000_000);
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function calculateAdjustedScore(
-  baseScore: number,
-  outputTokens: number | null,
-): number {
-  const validOutputTokens = toValidOutputTokens(outputTokens);
-  if (validOutputTokens === null) return baseScore;
-
-  const adjustment = clamp(
-    OUTPUT_EFFICIENCY_MAX_ADJUSTMENT *
-      (1 - validOutputTokens / OUTPUT_EFFICIENCY_THRESHOLD_TOKENS),
-    -OUTPUT_EFFICIENCY_MAX_ADJUSTMENT,
-    OUTPUT_EFFICIENCY_MAX_ADJUSTMENT,
-  );
-
-  return baseScore * (1 + adjustment);
-}
-
 function toScoredModel(
   model: RankableModel,
   maxCoding: number,
@@ -152,11 +120,10 @@ function toScoredModel(
 
   return {
     model: model.model,
-    internalScore: calculateAdjustedScore(baseScore, outputTokens),
+    internalScore: baseScore,
     normalizedCoding,
     normalizedAgentic,
-    outputTokens,
-    output: toRoundedMillions(outputTokens),
+    tokens: toRoundedMillions(outputTokens),
   };
 }
 
@@ -206,7 +173,7 @@ export class ModelRankingService {
     return rankedModels.map((entry) => ({
       model: entry.model,
       score: Math.round((entry.internalScore / topInternalScore) * 100),
-      output: entry.output,
+      tokens: entry.tokens,
     }));
   }
 }

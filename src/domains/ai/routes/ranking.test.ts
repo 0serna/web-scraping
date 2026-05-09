@@ -25,12 +25,12 @@ describe("rankingRoutes", () => {
         {
           model: "Model B",
           score: 100,
-          output: 25,
+          tokens: 25,
         },
         {
           model: "Model A",
           score: 91,
-          output: null,
+          tokens: null,
         },
       ]),
     };
@@ -47,12 +47,12 @@ describe("rankingRoutes", () => {
       {
         model: "Model B",
         score: 100,
-        output: 25,
+        tokens: 25,
       },
       {
         model: "Model A",
         score: 91,
-        output: null,
+        tokens: null,
       },
     ]);
   });
