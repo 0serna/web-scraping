@@ -1,0 +1,21 @@
+{
+  "cleanupPolicies": {
+    "keep-latest-tag": {
+      "id": "keep-latest-tag",
+      "action": "KEEP",
+      "condition": {
+        "tagState": "TAGGED",
+        "tagPrefixes": ["latest"]
+      }
+    },
+    "delete-old-untagged": {
+      "id": "delete-old-untagged",
+      "action": "DELETE",
+      "condition": {
+        "tagState": "UNTAGGED",
+        "olderThan": "86400s"
+      }
+    }
+  },
+  "cleanupPolicyDryRun": false
+}
