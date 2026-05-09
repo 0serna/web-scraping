@@ -11,8 +11,8 @@ COPY src ./src
 
 RUN npm run build
 
-# Production stage
-FROM node:22-slim
+# Production dependencies stage
+FROM node:22-slim AS production-deps
 
 WORKDIR /app
 
@@ -21,6 +21,12 @@ COPY package*.json ./
 # Skip scripts to prevent husky prepare hook from running
 RUN npm ci --omit=dev --ignore-scripts
 
-COPY --from=builder /app/dist ./dist
+# Production stage
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
 
-CMD ["node", "dist/index.js"]
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=production-deps /app/node_modules ./node_modules
+
+CMD ["dist/index.js"]
