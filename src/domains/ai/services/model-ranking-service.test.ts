@@ -671,7 +671,7 @@ describe("ModelRankingService", () => {
         ? [
             {
               model: "GPT-5.5",
-              score: 100,
+              score: 73,
               tokens: null,
             },
           ]
@@ -714,12 +714,12 @@ describe("ModelRankingService", () => {
         ? [
             {
               model: "GPT-5.5",
-              score: 100,
+              score: 84,
               tokens: null,
             },
             {
               model: "Gemini 2 Pro",
-              score: 87,
+              score: 73,
               tokens: null,
             },
           ]
@@ -757,7 +757,7 @@ describe("ModelRankingService", () => {
         ? [
             {
               model: "GPT-5.5",
-              score: 100,
+              score: 66,
               tokens: null,
             },
           ]

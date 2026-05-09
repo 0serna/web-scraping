@@ -23,6 +23,7 @@ function isRankableReasoningModel(
 
 interface ScoredModel {
   model: string;
+  slug: string;
   internalScore: number;
   normalizedCoding: number;
   normalizedAgentic: number;
@@ -120,6 +121,7 @@ function toScoredModel(
 
   return {
     model: model.model,
+    slug: model.slug,
     internalScore: baseScore,
     normalizedCoding,
     normalizedAgentic,
@@ -139,14 +141,7 @@ export class ModelRankingService {
   async getRanking(): Promise<RankedModel[]> {
     const models = await this.artificialAnalysisClient.getModels();
 
-    const rankableModels = models
-      .filter(isRankableReasoningModel)
-      .filter(
-        (model) =>
-          !EXCLUDED_SLUG_PREFIXES.some((prefix) =>
-            model.slug.startsWith(prefix),
-          ),
-      );
+    const rankableModels = models.filter(isRankableReasoningModel);
 
     if (rankableModels.length === 0) {
       throw new AiParseError(
@@ -168,9 +163,18 @@ export class ModelRankingService {
       );
     }
 
+    const visibleModels = rankedModels.filter(
+      (model) =>
+        !EXCLUDED_SLUG_PREFIXES.some((prefix) => model.slug.startsWith(prefix)),
+    );
+
+    if (visibleModels.length === 0) {
+      return [];
+    }
+
     const topInternalScore = rankedModels[0].internalScore;
 
-    return rankedModels.map((entry) => ({
+    return visibleModels.map((entry) => ({
       model: entry.model,
       score: Math.round((entry.internalScore / topInternalScore) * 100),
       tokens: entry.tokens,
