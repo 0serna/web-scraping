@@ -4,18 +4,18 @@ import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
 const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
 const WEIGHT_INTELLIGENCE_CODING = 0.4;
-export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [];
+export const MIN_SCORE_THRESHOLD = 70;
+export const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
 
 function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
   return model.coding !== null && model.agentic !== null;
 }
 
-function isRankableReasoningModel(
+function isRankableModel(
   model: ArtificialAnalysisModel,
 ): model is RankableModel {
   return (
     model.slug.length > 0 &&
-    model.reasoningModel === true &&
     model.deprecated !== true &&
     hasRequiredModelData(model)
   );
@@ -32,7 +32,6 @@ interface ScoredModel {
 
 type RankableModel = ArtificialAnalysisModel & {
   slug: string;
-  reasoningModel: true;
   coding: number;
   agentic: number;
 };
@@ -141,11 +140,11 @@ export class ModelRankingService {
   async getRanking(): Promise<RankedModel[]> {
     const models = await this.artificialAnalysisClient.getModels();
 
-    const rankableModels = models.filter(isRankableReasoningModel);
+    const rankableModels = models.filter(isRankableModel);
 
     if (rankableModels.length === 0) {
       throw new AiParseError(
-        "No reasoning models with slug, coding, and agentic scores were found",
+        "No models with slug, coding, and agentic scores were found",
       );
     }
 
@@ -174,10 +173,12 @@ export class ModelRankingService {
 
     const topInternalScore = rankedModels[0].internalScore;
 
-    return visibleModels.map((entry) => ({
-      model: entry.model,
-      score: Math.round((entry.internalScore / topInternalScore) * 100),
-      tokens: entry.tokens,
-    }));
+    return visibleModels
+      .map((entry) => ({
+        model: entry.model,
+        score: Math.round((entry.internalScore / topInternalScore) * 100),
+        tokens: entry.tokens,
+      }))
+      .filter((model) => model.score >= MIN_SCORE_THRESHOLD);
   }
 }

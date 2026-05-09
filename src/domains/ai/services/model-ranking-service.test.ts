@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import {
   EXCLUDED_SLUG_PREFIXES,
+  MIN_SCORE_THRESHOLD,
   ModelRankingService,
 } from "./model-ranking-service.js";
 
@@ -332,7 +333,6 @@ describe("ModelRankingService", () => {
       "Higher Coding",
       "Higher Agentic",
       "Max Agentic Anchor",
-      "Max Coding Anchor",
     ]);
   });
 
@@ -488,46 +488,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("excludes non-reasoning models from the ranking", async () => {
-    const artificialAnalysisClient = {
-      getModels: vi.fn().mockResolvedValue([
-        {
-          slug: "reasoning-model",
-          model: "Reasoning Model",
-          reasoningModel: true,
-          agentic: 80,
-          coding: 70,
-          blendedPrice: 0.5,
-          inputPrice: 0.3,
-          outputPrice: 0.7,
-          intelligenceIndexOutputTokens: null,
-        },
-        {
-          slug: "non-reasoning-model",
-          model: "Non-Reasoning Model",
-          reasoningModel: false,
-          agentic: 90,
-          coding: 90,
-          blendedPrice: 0.25,
-          inputPrice: 0.2,
-          outputPrice: 0.4,
-          intelligenceIndexOutputTokens: null,
-        },
-      ]),
-    };
-
-    const service = new ModelRankingService(artificialAnalysisClient as never);
-
-    await expect(service.getRanking()).resolves.toEqual([
-      {
-        model: "Reasoning Model",
-        score: 100,
-        tokens: null,
-      },
-    ]);
-  });
-
-  it("applies reasoning filtering before final score calculation", async () => {
+  it("includes all models with valid scores in ranking calculation", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
@@ -569,11 +530,16 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expect(ranking).toHaveLength(2);
+    expect(ranking).toHaveLength(3);
     expect(ranking).toEqual([
       {
         model: "Reasoning Expensive",
         score: 100,
+        tokens: null,
+      },
+      {
+        model: "Non-Reasoning Cheap",
+        score: 63,
         tokens: null,
       },
       {
@@ -1082,5 +1048,108 @@ describe("ModelRankingService", () => {
     ]);
     expect(ranking[0]).not.toHaveProperty("date");
     expect(ranking[0]).not.toHaveProperty("releaseDate");
+  });
+
+  it("includes non-reasoning models with valid scores in ranking", async () => {
+    const artificialAnalysisClient = {
+      getModels: vi.fn().mockResolvedValue([
+        {
+          slug: "reasoning-model",
+          model: "Reasoning Model",
+          reasoningModel: true,
+          agentic: 80,
+          coding: 70,
+          blendedPrice: 0.5,
+          inputPrice: 0.3,
+          outputPrice: 0.7,
+          intelligenceIndexOutputTokens: null,
+        },
+        {
+          slug: "non-reasoning-model",
+          model: "Non-Reasoning Model",
+          reasoningModel: false,
+          agentic: 90,
+          coding: 90,
+          blendedPrice: 0.25,
+          inputPrice: 0.2,
+          outputPrice: 0.4,
+          intelligenceIndexOutputTokens: null,
+        },
+      ]),
+    };
+
+    const service = new ModelRankingService(artificialAnalysisClient as never);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      {
+        model: "Non-Reasoning Model",
+        score: 100,
+        tokens: null,
+      },
+      {
+        model: "Reasoning Model",
+        score: 84,
+        tokens: null,
+      },
+    ]);
+  });
+
+  it("excludes models below minimum score threshold", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "high-score-model",
+        model: "High Score Model",
+        agentic: 100,
+        coding: 100,
+      }),
+      rankingModel({
+        slug: "low-score-model",
+        model: "Low Score Model",
+        agentic: 30,
+        coding: 30,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "High Score Model",
+        score: 100,
+        tokens: null,
+      },
+    ]);
+    expect(ranking).toHaveLength(1);
+  });
+
+  it("filters out models with relative score below threshold", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-a",
+        model: "Model A",
+        agentic: 20,
+        coding: 20,
+      }),
+      rankingModel({
+        slug: "model-b",
+        model: "Model B",
+        agentic: 40,
+        coding: 40,
+      }),
+    ]);
+
+    const ranking = await service.getRanking();
+
+    expect(ranking).toEqual([
+      {
+        model: "Model B",
+        score: 100,
+        tokens: null,
+      },
+    ]);
+  });
+
+  it("uses configured MIN_SCORE_THRESHOLD constant", async () => {
+    expect(MIN_SCORE_THRESHOLD).toBe(60);
   });
 });
