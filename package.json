@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
-    "check": "eslint . && tsc --noEmit && fallow --production-health && openspec validate --all",
+    "check": "bash scripts/check.sh",
     "format": "prettier --write .",
     "test": "vitest run",
     "prepare": "husky"
@@ -23,7 +23,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.0.1",
-    "fallow": "^2.66.0",
+    "fallow": "^2.76.0",
     "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
