@@ -1,8 +1,8 @@
-## Project Structure
+## Repository Structure
 
 ```text
 .
-├── src/                      # application source
+├── src/                      # application source (TypeScript)
 │   ├── domains/
 │   │   ├── ai/               # AI scraping domain
 │   │   ├── bvc/              # BVC scraping domain
@@ -14,7 +14,7 @@
 │   │   └── utils/            # shared utilities
 │   └── index.ts              # app entry point
 ├── openspec/                 # change proposals and specs
-└── .husky/                   # git hooks
+└── scripts/                  # automation scripts
 ```
 
 ## Repository Commands
