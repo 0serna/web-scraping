@@ -2,10 +2,10 @@ import { AiParseError } from "../types/errors.js";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-const WEIGHT_INTELLIGENCE_AGENTIC = 0.6;
-const WEIGHT_INTELLIGENCE_CODING = 0.4;
+const WEIGHT_INTELLIGENCE_CODING = 0.7;
+const WEIGHT_INTELLIGENCE_AGENTIC = 0.3;
 export const MIN_SCORE_THRESHOLD = 70;
-export const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude"];
+export const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude", "gemini"];
 
 function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
   return model.coding !== null && model.agentic !== null;
