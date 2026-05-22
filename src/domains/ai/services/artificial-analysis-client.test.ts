@@ -147,6 +147,9 @@ function freshRawModel(slug = "fresh-model"): unknown {
     short_name: "Fresh Model",
     coding_index: 70,
     price_1m_blended_3_to_1: 1.0,
+    intelligence_index_token_counts: {
+      output_tokens: 25_000,
+    },
   };
 }
 
@@ -744,7 +747,7 @@ describe("ArtificialAnalysisClient", () => {
     );
   });
 
-  it("accepts cached model with coding", async () => {
+  it("accepts cached model with coding and output tokens", async () => {
     const cachedModels: ArtificialAnalysisModel[] = [
       {
         slug: "cached-model",
@@ -754,7 +757,7 @@ describe("ArtificialAnalysisClient", () => {
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,
-        intelligenceIndexOutputTokens: null,
+        intelligenceIndexOutputTokens: 25_000,
       },
     ];
 
@@ -770,6 +773,9 @@ describe("ArtificialAnalysisClient", () => {
         frontier_model: false,
         short_name: "Should Not Be Fetched",
         coding_index: 70,
+        intelligence_index_token_counts: {
+          output_tokens: 25_000,
+        },
       },
     ]);
     mockHtmlResponse(fetchWithTimeout, html);
@@ -800,6 +806,23 @@ describe("ArtificialAnalysisClient", () => {
         model: "No Coding",
         frontierModel: true,
         coding: null,
+        blendedPrice: null,
+        inputPrice: null,
+        outputPrice: null,
+        intelligenceIndexOutputTokens: 25_000,
+      },
+    ];
+
+    await expectCachedModelsRejected(staleModels);
+  });
+
+  it("rejects cached model without output tokens", async () => {
+    const staleModels: ArtificialAnalysisModel[] = [
+      {
+        slug: "no-output-tokens",
+        model: "No Output Tokens",
+        frontierModel: true,
+        coding: 70,
         blendedPrice: null,
         inputPrice: null,
         outputPrice: null,

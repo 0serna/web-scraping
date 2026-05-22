@@ -94,7 +94,8 @@ function isRankableModel(model: ArtificialAnalysisModel): boolean {
   return (
     model.slug.length > 0 &&
     model.deprecated !== true &&
-    isFiniteNumber(model.coding)
+    isFiniteNumber(model.coding) &&
+    isPositiveFiniteNumber(model.intelligenceIndexOutputTokens)
   );
 }
 

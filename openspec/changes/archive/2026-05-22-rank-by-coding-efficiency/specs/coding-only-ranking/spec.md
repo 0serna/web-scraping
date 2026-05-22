@@ -1,10 +1,4 @@
-# coding-only-ranking Specification
-
-## Purpose
-
-Rank AI models by coding efficiency using their coding index and output token counts.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rank models with coding scores only
 
@@ -91,13 +85,3 @@ The system SHALL use coding score, output-token count, and model name as tie-bre
 
 - **WHEN** two models have equal internal efficiency scores, equal coding scores, and equal output-token counts
 - **THEN** the system SHALL order them by model name ascending
-
-### Requirement: Omit price from ranking response
-
-The system SHALL NOT include model price fields, speed fields, or release-date fields in successful AI model ranking response items.
-
-#### Scenario: Ranking response excludes price, speed, and date
-
-- **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `score`, and `tokens`
-- **AND** each ranking item SHALL NOT include `price1m`, `speed`, `tokensPerSecond`, `date`, or `releaseDate`

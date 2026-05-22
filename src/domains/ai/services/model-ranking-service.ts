@@ -2,7 +2,6 @@ import { AiParseError } from "../types/errors.js";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-export const MIN_SCORE_THRESHOLD = 70;
 export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
   "claude",
   "gemini",
@@ -10,7 +9,12 @@ export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
 ];
 
 function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
-  return model.coding !== null;
+  return (
+    model.coding !== null &&
+    model.intelligenceIndexOutputTokens !== null &&
+    Number.isFinite(model.intelligenceIndexOutputTokens) &&
+    model.intelligenceIndexOutputTokens > 0
+  );
 }
 
 function isRankableModel(
@@ -27,24 +31,27 @@ interface ScoredModel {
   model: string;
   slug: string;
   internalScore: number;
-  normalizedCoding: number;
+  coding: number;
+  outputTokens: number;
   tokens: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
   slug: string;
   coding: number;
+  intelligenceIndexOutputTokens: number;
 };
 
 function compareInternalScore(left: ScoredModel, right: ScoredModel): number {
   return right.internalScore - left.internalScore;
 }
 
-function compareNormalizedCoding(
-  left: ScoredModel,
-  right: ScoredModel,
-): number {
-  return right.normalizedCoding - left.normalizedCoding;
+function compareCoding(left: ScoredModel, right: ScoredModel): number {
+  return right.coding - left.coding;
+}
+
+function compareOutputTokens(left: ScoredModel, right: ScoredModel): number {
+  return left.outputTokens - right.outputTokens;
 }
 
 function compareModelName(left: ScoredModel, right: ScoredModel): number {
@@ -54,7 +61,8 @@ function compareModelName(left: ScoredModel, right: ScoredModel): number {
 function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   const comparators = [
     compareInternalScore,
-    compareNormalizedCoding,
+    compareCoding,
+    compareOutputTokens,
     compareModelName,
   ];
 
@@ -66,34 +74,21 @@ function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   return 0;
 }
 
-function getMaxCoding(models: RankableModel[]): number {
-  return Math.max(...models.map((model) => model.coding));
-}
-
-function normalizeScore(value: number, maxValue: number): number {
-  if (maxValue <= 0) return 0;
-  return (value / maxValue) * 100;
-}
-
-function toValidOutputTokens(value: number | null): number | null {
-  if (value === null || !Number.isFinite(value) || value <= 0) return null;
-  return value;
-}
-
 function toRoundedMillions(value: number | null): number | null {
   if (value === null) return null;
   return Math.round(value / 1_000_000);
 }
 
-function toScoredModel(model: RankableModel, maxCoding: number): ScoredModel {
-  const normalizedCoding = normalizeScore(model.coding, maxCoding);
-  const outputTokens = toValidOutputTokens(model.intelligenceIndexOutputTokens);
+function toScoredModel(model: RankableModel): ScoredModel {
+  const outputTokens = model.intelligenceIndexOutputTokens;
+  const outputTokensMillions = outputTokens / 1_000_000;
 
   return {
     model: model.model,
     slug: model.slug,
-    internalScore: normalizedCoding,
-    normalizedCoding,
+    internalScore: model.coding ** 6 / Math.sqrt(outputTokensMillions),
+    coding: model.coding,
+    outputTokens,
     tokens: toRoundedMillions(outputTokens),
   };
 }
@@ -114,17 +109,22 @@ export class ModelRankingService {
 
     if (rankableModels.length === 0) {
       throw new AiParseError(
-        "No models with slug and coding scores were found",
+        "No models with slug, coding, and output tokens were found",
       );
     }
 
-    const maxCoding = getMaxCoding(rankableModels);
-
-    const scoredModels = rankableModels.map((model) =>
-      toScoredModel(model, maxCoding),
+    const visibleRankableModels = rankableModels.filter(
+      (model) =>
+        !EXCLUDED_SLUG_PREFIXES.some((prefix) => model.slug.startsWith(prefix)),
     );
 
-    const rankedModels = scoredModels.sort(compareFinalModels);
+    if (visibleRankableModels.length === 0) {
+      return [];
+    }
+
+    const rankedModels = visibleRankableModels
+      .map(toScoredModel)
+      .sort(compareFinalModels);
 
     if (rankedModels[0].internalScore <= 0) {
       throw new AiParseError(
@@ -132,23 +132,13 @@ export class ModelRankingService {
       );
     }
 
-    const visibleModels = rankedModels.filter(
-      (model) =>
-        !EXCLUDED_SLUG_PREFIXES.some((prefix) => model.slug.startsWith(prefix)),
-    );
-
-    if (visibleModels.length === 0) {
-      return [];
-    }
-
     const topInternalScore = rankedModels[0].internalScore;
 
-    return visibleModels
-      .map((entry) => ({
-        model: entry.model,
-        score: Math.round((entry.internalScore / topInternalScore) * 100),
-        tokens: entry.tokens,
-      }))
-      .filter((model) => model.score >= MIN_SCORE_THRESHOLD);
+    return rankedModels.map((entry) => ({
+      model: entry.model,
+      score: Math.round((entry.internalScore / topInternalScore) * 100),
+      coding: Math.round(entry.coding),
+      tokens: entry.tokens,
+    }));
   }
 }

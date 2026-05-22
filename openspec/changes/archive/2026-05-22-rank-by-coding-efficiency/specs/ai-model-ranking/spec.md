@@ -1,10 +1,4 @@
-# ai-model-ranking Specification
-
-## Purpose
-
-Fetch and rank AI models from Artificial Analysis performance data, returning a relative score for each eligible model.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Rank models with valid coding scores
 
@@ -94,16 +88,6 @@ The system SHALL return AI model ranking items with `score` expressed as a perce
 
 - **WHEN** two eligible models have equal internal efficiency scores
 - **THEN** the system SHALL order them by coding score descending, then output-token count ascending, then model name ascending
-
-### Requirement: Omit price from ranking response
-
-The system SHALL NOT include model price fields, speed fields, or release-date fields in successful AI model ranking response items.
-
-#### Scenario: Ranking response excludes price, speed, and date
-
-- **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `score`, and `tokens`
-- **AND** each ranking item SHALL NOT include `price1m`, `speed`, `tokensPerSecond`, `date`, or `releaseDate`
 
 ### Requirement: Exclude models by slug prefix before scoring
 
