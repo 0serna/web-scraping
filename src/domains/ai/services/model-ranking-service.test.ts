@@ -10,10 +10,9 @@ const hasExcludedSlugPrefixes = EXCLUDED_SLUG_PREFIXES.length > 0;
 
 function rankingModel(
   overrides: Partial<ArtificialAnalysisModel> &
-    Pick<ArtificialAnalysisModel, "slug" | "model" | "agentic" | "coding">,
+    Pick<ArtificialAnalysisModel, "slug" | "model" | "coding">,
 ): ArtificialAnalysisModel {
   return {
-    reasoningModel: true,
     frontierModel: false,
     blendedPrice: null,
     inputPrice: null,
@@ -47,7 +46,6 @@ function excludedPrefixModel(score = 90): ArtificialAnalysisModel {
   return rankingModel({
     slug: `${excludedSlugPrefix}-candidate`,
     model: "Excluded Prefix Candidate",
-    agentic: score,
     coding: score,
     blendedPrice: 0.5,
     inputPrice: 0.3,
@@ -55,11 +53,10 @@ function excludedPrefixModel(score = 90): ArtificialAnalysisModel {
   });
 }
 
-function gpt55Model(agentic = 70, coding = 60): ArtificialAnalysisModel {
+function gpt55Model(coding = 60): ArtificialAnalysisModel {
   return rankingModel({
     slug: "gpt-5-5",
     model: "GPT-5.5",
-    agentic,
     coding,
     blendedPrice: 0.25,
     inputPrice: 0.2,
@@ -74,8 +71,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          reasoningModel: true,
-          agentic: 50,
           coding: 50,
           blendedPrice: 0.375,
           inputPrice: 0.25,
@@ -85,8 +80,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: 80,
           coding: 40,
           blendedPrice: 0.375,
           inputPrice: 0.25,
@@ -96,8 +89,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-c",
           model: "Model C",
-          reasoningModel: true,
-          agentic: 90,
           coding: null,
           blendedPrice: null,
           inputPrice: 0.15,
@@ -110,42 +101,38 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Model B", score: 100 }),
-      rankedModel({ model: "Model A", score: 84 }),
+      rankedModel({ model: "Model A", score: 100 }),
+      rankedModel({ model: "Model B", score: 80 }),
     ]);
   });
 
-  it("normalizes coding and agentic scores across the eligible set before weighting", async () => {
+  it("normalizes coding scores across the eligible set", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "coding-leader",
         model: "Coding Leader",
-        agentic: 80,
         coding: 100,
       }),
       rankingModel({
-        slug: "agentic-leader",
-        model: "Agentic Leader",
-        agentic: 100,
-        coding: 60,
+        slug: "coding-follower",
+        model: "Coding Follower",
+        coding: 70,
       }),
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({ model: "Coding Leader", score: 100 }),
-      rankedModel({ model: "Agentic Leader", score: 95 }),
+      rankedModel({ model: "Coding Follower", score: 70 }),
     ]);
   });
 
-  it("throws when no model has both scores", async () => {
+  it("throws when no model has a coding score", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
           slug: "model-a",
           model: "Model A",
-          reasoningModel: true,
-          agentic: null,
-          coding: 50,
+          coding: null,
           blendedPrice: null,
           inputPrice: null,
           outputPrice: null,
@@ -154,8 +141,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: 80,
           coding: null,
           blendedPrice: null,
           inputPrice: null,
@@ -178,9 +163,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a-fast",
           model: "Model A",
-          reasoningModel: true,
-          agentic: 90,
-          coding: 40,
+          coding: 50,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
@@ -189,8 +172,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a-smart",
           model: "Model A",
-          reasoningModel: true,
-          agentic: 70,
           coding: 70,
           blendedPrice: 0.75,
           inputPrice: 0.5,
@@ -200,9 +181,7 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: 80,
-          coding: 40,
+          coding: 50,
           blendedPrice: 0.125,
           inputPrice: 0.1,
           outputPrice: 0.2,
@@ -221,12 +200,12 @@ describe("ModelRankingService", () => {
       },
       {
         model: "Model A",
-        score: 96,
+        score: 71,
         tokens: null,
       },
       {
         model: "Model B",
-        score: 88,
+        score: 71,
         tokens: null,
       },
     ]);
@@ -237,8 +216,6 @@ describe("ModelRankingService", () => {
       {
         slug: "model-x-cheap",
         model: "Model X",
-        reasoningModel: true,
-        agentic: 89.5,
         coding: 50.75,
         blendedPrice: 0.125,
         inputPrice: 0.1,
@@ -248,8 +225,6 @@ describe("ModelRankingService", () => {
       {
         slug: "model-x-expensive",
         model: "Model X",
-        reasoningModel: true,
-        agentic: 90,
         coding: 50,
         blendedPrice: 0.325,
         inputPrice: 0.3,
@@ -259,8 +234,6 @@ describe("ModelRankingService", () => {
       {
         slug: "model-y",
         model: "Model Y",
-        reasoningModel: true,
-        agentic: 85,
         coding: 60,
         blendedPrice: 0.525,
         inputPrice: 0.5,
@@ -294,35 +267,31 @@ describe("ModelRankingService", () => {
     expect(rankingA[0].model).toBe("Model Y");
     expect(rankingA[1]).toEqual({
       model: "Model X",
-      score: 97,
+      score: 85,
       tokens: null,
     });
   });
 
-  it("prefers higher normalized agentic score before normalized coding in ties", async () => {
+  it("prefers coding and model name for deterministic ordering", async () => {
     const service = createServiceForModels([
       rankingModel({
-        slug: "higher-agentic",
-        model: "Higher Agentic",
-        agentic: 90,
+        slug: "alpha-coding-tie",
+        model: "Alpha Coding Tie",
         coding: 50,
       }),
       rankingModel({
         slug: "higher-coding",
         model: "Higher Coding",
-        agentic: 60,
         coding: 190,
       }),
       rankingModel({
-        slug: "max-agentic-anchor",
-        model: "Max Agentic Anchor",
-        agentic: 100,
+        slug: "zero-coding-anchor",
+        model: "Zero Coding Anchor",
         coding: 0,
       }),
       rankingModel({
         slug: "max-coding-anchor",
         model: "Max Coding Anchor",
-        agentic: 0,
         coding: 200,
       }),
     ]);
@@ -330,9 +299,8 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking.map((entry) => entry.model)).toEqual([
+      "Max Coding Anchor",
       "Higher Coding",
-      "Higher Agentic",
-      "Max Agentic Anchor",
     ]);
   });
 
@@ -341,7 +309,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "model-a",
         model: "Model A",
-        agentic: 80.123,
         coding: 40.456,
         blendedPrice: 0.2625,
         inputPrice: 0.15,
@@ -364,7 +331,6 @@ describe("ModelRankingService", () => {
       return rankingModel({
         slug: `model-${rank}`,
         model: `Model ${rank}`,
-        agentic: 100 - index,
         coding: 100 - index,
         blendedPrice: 0.5,
         inputPrice: 0.5,
@@ -390,14 +356,12 @@ describe("ModelRankingService", () => {
     });
   });
 
-  it("filters by reasoning, coding, and agentic only", async () => {
+  it("filters by slug and coding only", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
           slug: "model-a",
           model: "Model A",
-          reasoningModel: true,
-          agentic: null,
           coding: 0,
           blendedPrice: null,
           inputPrice: null,
@@ -407,8 +371,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: 10,
           coding: 10,
           blendedPrice: null,
           inputPrice: null,
@@ -425,12 +387,11 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("includes reasoning model without price data", async () => {
+  it("includes model without price data", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-a",
         model: "Model A",
-        agentic: 90,
         coding: 80,
       }),
     ]);
@@ -444,26 +405,22 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("includes reasoning model without frontier flag in the ranking", async () => {
+  it("includes model without frontier flag in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
-          slug: "reasoning-frontier",
-          model: "Reasoning Frontier",
-          reasoningModel: true,
+          slug: "frontier-model",
+          model: "Frontier Model",
           frontierModel: true,
-          agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
           inputPrice: 0.3,
           outputPrice: 0.7,
         }),
         rankingModel({
-          slug: "reasoning-non-frontier",
-          model: "Reasoning Non-Frontier",
-          reasoningModel: true,
+          slug: "non-frontier-model",
+          model: "Non-Frontier Model",
           frontierModel: false,
-          agentic: 95,
           coding: 95,
           blendedPrice: 0.25,
           inputPrice: 0.2,
@@ -476,13 +433,13 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       {
-        model: "Reasoning Non-Frontier",
+        model: "Non-Frontier Model",
         score: 100,
         tokens: null,
       },
       {
-        model: "Reasoning Frontier",
-        score: 80,
+        model: "Frontier Model",
+        score: 74,
         tokens: null,
       },
     ]);
@@ -492,10 +449,8 @@ describe("ModelRankingService", () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
-          slug: "reasoning-cheap",
-          model: "Reasoning Cheap",
-          reasoningModel: true,
-          agentic: 50,
+          slug: "low-score-model-a",
+          model: "Low Score Model A",
           coding: 50,
           blendedPrice: 0.1,
           inputPrice: 0.05,
@@ -503,10 +458,8 @@ describe("ModelRankingService", () => {
           intelligenceIndexOutputTokens: null,
         },
         {
-          slug: "reasoning-expensive",
-          model: "Reasoning Expensive",
-          reasoningModel: true,
-          agentic: 80,
+          slug: "high-score-model",
+          model: "High Score Model",
           coding: 80,
           blendedPrice: 10.0,
           inputPrice: 5.0,
@@ -514,10 +467,8 @@ describe("ModelRankingService", () => {
           intelligenceIndexOutputTokens: null,
         },
         {
-          slug: "non-reasoning-cheap",
-          model: "Non-Reasoning Cheap",
-          reasoningModel: false,
-          agentic: 50,
+          slug: "low-score-model-b",
+          model: "Low Score Model B",
           coding: 50,
           blendedPrice: 0.01,
           inputPrice: 0.005,
@@ -530,21 +481,11 @@ describe("ModelRankingService", () => {
     const service = new ModelRankingService(artificialAnalysisClient as never);
     const ranking = await service.getRanking();
 
-    expect(ranking).toHaveLength(3);
+    expect(ranking).toHaveLength(1);
     expect(ranking).toEqual([
       {
-        model: "Reasoning Expensive",
+        model: "High Score Model",
         score: 100,
-        tokens: null,
-      },
-      {
-        model: "Non-Reasoning Cheap",
-        score: 63,
-        tokens: null,
-      },
-      {
-        model: "Reasoning Cheap",
-        score: 63,
         tokens: null,
       },
     ]);
@@ -556,8 +497,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          reasoningModel: true,
-          agentic: null,
           coding: 0,
           blendedPrice: null,
           inputPrice: null,
@@ -567,8 +506,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: -10,
           coding: -10,
           blendedPrice: 0.25,
           inputPrice: 0.2,
@@ -591,8 +528,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-a",
           model: "Model A",
-          reasoningModel: true,
-          agentic: 86.004,
           coding: 86.004,
           blendedPrice: 0.125,
           inputPrice: 0.1,
@@ -602,8 +537,6 @@ describe("ModelRankingService", () => {
         {
           slug: "model-b",
           model: "Model B",
-          reasoningModel: true,
-          agentic: 85.99,
           coding: 85.99,
           blendedPrice: 0.2,
           inputPrice: null,
@@ -634,13 +567,7 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual(
       hasExcludedSlugPrefixes
-        ? [
-            {
-              model: "GPT-5.5",
-              score: 73,
-              tokens: null,
-            },
-          ]
+        ? []
         : [
             {
               model: "Excluded Prefix Candidate",
@@ -649,27 +576,26 @@ describe("ModelRankingService", () => {
             },
             {
               model: "GPT-5.5",
-              score: 73,
+              score: 67,
               tokens: null,
             },
           ],
     );
   });
 
-  it("excludes models with configured slug prefixes but keeps other reasoning models", async () => {
+  it("excludes models with configured slug prefixes but keeps other models", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         excludedPrefixModel(),
         rankingModel({
           slug: "gemini-2-pro",
           model: "Gemini 2 Pro",
-          agentic: 70,
           coding: 60,
           blendedPrice: 0.25,
           inputPrice: 0.2,
           outputPrice: 0.4,
         }),
-        gpt55Model(80, 70),
+        gpt55Model(80),
       ]),
     };
 
@@ -680,12 +606,7 @@ describe("ModelRankingService", () => {
         ? [
             {
               model: "GPT-5.5",
-              score: 84,
-              tokens: null,
-            },
-            {
-              model: "Gemini 2 Pro",
-              score: 73,
+              score: 89,
               tokens: null,
             },
           ]
@@ -697,12 +618,7 @@ describe("ModelRankingService", () => {
             },
             {
               model: "GPT-5.5",
-              score: 84,
-              tokens: null,
-            },
-            {
-              model: "Gemini 2 Pro",
-              score: 73,
+              score: 78,
               tokens: null,
             },
           ],
@@ -720,13 +636,7 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual(
       hasExcludedSlugPrefixes
-        ? [
-            {
-              model: "GPT-5.5",
-              score: 66,
-              tokens: null,
-            },
-          ]
+        ? []
         : [
             {
               model: "Excluded Prefix Candidate",
@@ -747,14 +657,12 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "deprecated-top-model",
         model: "Deprecated Top Model",
-        agentic: 100,
         coding: 100,
         deprecated: true,
       }),
       rankingModel({
         slug: "active-model",
         model: "Active Model",
-        agentic: 80,
         coding: 70,
         deprecated: false,
       }),
@@ -773,7 +681,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "unknown-lifecycle-model",
         model: "Unknown Lifecycle Model",
-        agentic: 80,
         coding: 70,
       }),
     ]);
@@ -788,14 +695,12 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "deprecated-model-a",
         model: "Deprecated Model A",
-        agentic: 80,
         coding: 70,
         deprecated: true,
       }),
       rankingModel({
         slug: "deprecated-model-b",
         model: "Deprecated Model B",
-        agentic: 70,
         coding: 60,
         deprecated: true,
       }),
@@ -806,13 +711,12 @@ describe("ModelRankingService", () => {
     });
   });
 
-  it("keeps zero-blended-price reasoning models in the ranking", async () => {
+  it("keeps zero-blended-price models in the ranking", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         rankingModel({
           slug: "model-a",
           model: "Model A",
-          agentic: 100,
           coding: 100,
           blendedPrice: 0,
           inputPrice: 0,
@@ -821,7 +725,6 @@ describe("ModelRankingService", () => {
         rankingModel({
           slug: "model-b",
           model: "Model B",
-          agentic: 90,
           coding: 90,
           blendedPrice: 0.625,
           inputPrice: 0.5,
@@ -852,7 +755,6 @@ describe("ModelRankingService", () => {
         rankingModel({
           slug: "model-with-tokens",
           model: "Model With Tokens",
-          agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
           inputPrice: 0.3,
@@ -862,7 +764,6 @@ describe("ModelRankingService", () => {
         rankingModel({
           slug: "model-no-tokens",
           model: "Model No Tokens",
-          agentic: 90,
           coding: 80,
           blendedPrice: 0.25,
           inputPrice: 0.15,
@@ -884,14 +785,12 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "model-invalid-output",
         model: "Model Invalid Output",
-        agentic: 90,
         coding: 80,
         intelligenceIndexOutputTokens: Number.NaN,
       }),
       rankingModel({
         slug: "model-zero-output",
         model: "Model Zero Output",
-        agentic: 70,
         coding: 60,
         intelligenceIndexOutputTokens: 0,
       }),
@@ -901,7 +800,7 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toEqual([
       rankedModel({ model: "Model Invalid Output", score: 100, tokens: null }),
-      rankedModel({ model: "Model Zero Output", score: 77, tokens: null }),
+      rankedModel({ model: "Model Zero Output", score: 75, tokens: null }),
     ]);
   });
 
@@ -911,7 +810,6 @@ describe("ModelRankingService", () => {
         rankingModel({
           slug: "model-a",
           model: "Model A",
-          agentic: 80,
           coding: 70,
           blendedPrice: 0.5,
           inputPrice: 0.3,
@@ -920,7 +818,6 @@ describe("ModelRankingService", () => {
         rankingModel({
           slug: "model-b",
           model: "Model B",
-          agentic: 90,
           coding: 80,
           blendedPrice: 0.25,
           inputPrice: 0.15,
@@ -941,7 +838,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "model-with-output-tokens",
         model: "Model With Output Tokens",
-        agentic: 80,
         coding: 70,
         intelligenceIndexOutputTokens: 25_400_000,
       }),
@@ -963,7 +859,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "model-no-output-tokens",
         model: "Model No Output Tokens",
-        agentic: 80,
         coding: 70,
         intelligenceIndexOutputTokens: null,
       }),
@@ -985,7 +880,6 @@ describe("ModelRankingService", () => {
       ...rankingModel({
         slug: "old-model",
         model: "Old Model",
-        agentic: 90,
         coding: 80,
       }),
       releaseDate: "2025-01-15",
@@ -996,7 +890,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "recent-model",
         model: "Recent Model",
-        agentic: 70,
         coding: 60,
       }),
     ]);
@@ -1005,7 +898,7 @@ describe("ModelRankingService", () => {
 
     expect(ranking).toEqual([
       rankedModel({ model: "Old Model", score: 100 }),
-      rankedModel({ model: "Recent Model", score: 77 }),
+      rankedModel({ model: "Recent Model", score: 75 }),
     ]);
   });
 
@@ -1014,7 +907,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "unknown-date-model",
         model: "Unknown Date Model",
-        agentic: 80,
         coding: 70,
       }),
     ]);
@@ -1032,7 +924,6 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "dated-model",
         model: "Dated Model",
-        agentic: 80,
         coding: 70,
       }),
     ]);
@@ -1050,14 +941,12 @@ describe("ModelRankingService", () => {
     expect(ranking[0]).not.toHaveProperty("releaseDate");
   });
 
-  it("includes non-reasoning models with valid scores in ranking", async () => {
+  it("includes models with valid coding scores", async () => {
     const artificialAnalysisClient = {
       getModels: vi.fn().mockResolvedValue([
         {
-          slug: "reasoning-model",
-          model: "Reasoning Model",
-          reasoningModel: true,
-          agentic: 80,
+          slug: "valid-model-a",
+          model: "Valid Model A",
           coding: 70,
           blendedPrice: 0.5,
           inputPrice: 0.3,
@@ -1065,10 +954,8 @@ describe("ModelRankingService", () => {
           intelligenceIndexOutputTokens: null,
         },
         {
-          slug: "non-reasoning-model",
-          model: "Non-Reasoning Model",
-          reasoningModel: false,
-          agentic: 90,
+          slug: "valid-model-b",
+          model: "Valid Model B",
           coding: 90,
           blendedPrice: 0.25,
           inputPrice: 0.2,
@@ -1082,13 +969,13 @@ describe("ModelRankingService", () => {
 
     await expect(service.getRanking()).resolves.toEqual([
       {
-        model: "Non-Reasoning Model",
+        model: "Valid Model B",
         score: 100,
         tokens: null,
       },
       {
-        model: "Reasoning Model",
-        score: 84,
+        model: "Valid Model A",
+        score: 78,
         tokens: null,
       },
     ]);
@@ -1099,13 +986,11 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "high-score-model",
         model: "High Score Model",
-        agentic: 100,
         coding: 100,
       }),
       rankingModel({
         slug: "low-score-model",
         model: "Low Score Model",
-        agentic: 30,
         coding: 30,
       }),
     ]);
@@ -1127,13 +1012,11 @@ describe("ModelRankingService", () => {
       rankingModel({
         slug: "model-a",
         model: "Model A",
-        agentic: 20,
         coding: 20,
       }),
       rankingModel({
         slug: "model-b",
         model: "Model B",
-        agentic: 40,
         coding: 40,
       }),
     ]);
@@ -1150,6 +1033,6 @@ describe("ModelRankingService", () => {
   });
 
   it("uses configured MIN_SCORE_THRESHOLD constant", async () => {
-    expect(MIN_SCORE_THRESHOLD).toBe(60);
+    expect(MIN_SCORE_THRESHOLD).toBe(70);
   });
 });

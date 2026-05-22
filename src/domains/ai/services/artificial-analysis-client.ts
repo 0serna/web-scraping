@@ -90,23 +90,15 @@ function extractBalancedJsonText(
   return null;
 }
 
-function hasRequiredModelFields(model: ArtificialAnalysisModel): boolean {
+function isRankableModel(model: ArtificialAnalysisModel): boolean {
   return (
     model.slug.length > 0 &&
-    model.reasoningModel === true &&
-    model.deprecated !== true
+    model.deprecated !== true &&
+    isFiniteNumber(model.coding)
   );
 }
 
-function hasValidScores(model: ArtificialAnalysisModel): boolean {
-  return isFiniteNumber(model.coding) && isFiniteNumber(model.agentic);
-}
-
-function isRankableModel(model: ArtificialAnalysisModel): boolean {
-  return hasRequiredModelFields(model) && hasValidScores(model);
-}
-
-function hasRankableReasoningModel(models: ArtificialAnalysisModel[]): boolean {
+function hasRankableModel(models: ArtificialAnalysisModel[]): boolean {
   return models.some(isRankableModel);
 }
 
@@ -177,10 +169,6 @@ function resolveSlug(rawModel: RawArtificialAnalysisModel): string {
   return slug.trim();
 }
 
-function resolveReasoningModel(rawModel: RawArtificialAnalysisModel): boolean {
-  return rawModel.reasoning_model === true || rawModel.isReasoning === true;
-}
-
 function resolveFrontierModel(rawModel: RawArtificialAnalysisModel): boolean {
   return rawModel.frontier_model === true;
 }
@@ -199,9 +187,7 @@ function normalizeModel(
   return {
     slug,
     model,
-    reasoningModel: resolveReasoningModel(rawModel),
     frontierModel: resolveFrontierModel(rawModel),
-    agentic: resolveNumericField(rawModel.agentic_index),
     coding: resolveNumericField(rawModel.coding_index),
     blendedPrice: resolveNumericField(rawModel.price_1m_blended_3_to_1),
     inputPrice: resolveNumericField(rawModel.price_1m_input_tokens),
@@ -284,7 +270,6 @@ function toPerformanceData(
     slug,
     frontierModel: raw.frontier_model === true,
     coding: resolveNumericField(raw.coding_index),
-    agentic: resolveNumericField(raw.agentic_index),
     blendedPrice: resolveNumericField(raw.price_1m_blended_3_to_1),
     inputPrice: resolveNumericField(raw.price_1m_input_tokens),
     outputPrice: resolveNumericField(raw.price_1m_output_tokens),
@@ -414,7 +399,6 @@ function mergePerformanceFields<T extends ArtificialAnalysisModel>(
     ...model,
     frontierModel: source.frontierModel,
     coding: mergeNullableField(source.coding, model.coding),
-    agentic: mergeNullableField(source.agentic, model.agentic),
     blendedPrice: mergeNullableField(source.blendedPrice, model.blendedPrice),
     inputPrice: mergeNullableField(source.inputPrice, model.inputPrice),
     outputPrice: mergeNullableField(source.outputPrice, model.outputPrice),
@@ -559,7 +543,7 @@ export class ArtificialAnalysisClient {
         const html = await response.text();
         return parseModelsFromHtml(html);
       },
-      hasRankableReasoningModel,
+      hasRankableModel,
     );
   }
 }

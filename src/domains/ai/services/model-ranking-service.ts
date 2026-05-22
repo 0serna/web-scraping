@@ -2,13 +2,15 @@ import { AiParseError } from "../types/errors.js";
 import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
 
-const WEIGHT_INTELLIGENCE_CODING = 0.7;
-const WEIGHT_INTELLIGENCE_AGENTIC = 0.3;
 export const MIN_SCORE_THRESHOLD = 70;
-export const EXCLUDED_SLUG_PREFIXES: readonly string[] = ["claude", "gemini"];
+export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
+  "claude",
+  "gemini",
+  "muse",
+];
 
 function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
-  return model.coding !== null && model.agentic !== null;
+  return model.coding !== null;
 }
 
 function isRankableModel(
@@ -26,25 +28,16 @@ interface ScoredModel {
   slug: string;
   internalScore: number;
   normalizedCoding: number;
-  normalizedAgentic: number;
   tokens: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
   slug: string;
   coding: number;
-  agentic: number;
 };
 
 function compareInternalScore(left: ScoredModel, right: ScoredModel): number {
   return right.internalScore - left.internalScore;
-}
-
-function compareNormalizedAgentic(
-  left: ScoredModel,
-  right: ScoredModel,
-): number {
-  return right.normalizedAgentic - left.normalizedAgentic;
 }
 
 function compareNormalizedCoding(
@@ -61,7 +54,6 @@ function compareModelName(left: ScoredModel, right: ScoredModel): number {
 function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   const comparators = [
     compareInternalScore,
-    compareNormalizedAgentic,
     compareNormalizedCoding,
     compareModelName,
   ];
@@ -74,28 +66,13 @@ function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
   return 0;
 }
 
-function getNormalizationMaxima(models: RankableModel[]) {
-  return models.reduce(
-    (maxima, model) => ({
-      maxCoding: Math.max(maxima.maxCoding, model.coding),
-      maxAgentic: Math.max(maxima.maxAgentic, model.agentic),
-    }),
-    {
-      maxCoding: Number.NEGATIVE_INFINITY,
-      maxAgentic: Number.NEGATIVE_INFINITY,
-    },
-  );
+function getMaxCoding(models: RankableModel[]): number {
+  return Math.max(...models.map((model) => model.coding));
 }
 
 function normalizeScore(value: number, maxValue: number): number {
   if (maxValue <= 0) return 0;
   return (value / maxValue) * 100;
-}
-
-function calculateBaseScore(coding: number, agentic: number): number {
-  return (
-    coding * WEIGHT_INTELLIGENCE_CODING + agentic * WEIGHT_INTELLIGENCE_AGENTIC
-  );
 }
 
 function toValidOutputTokens(value: number | null): number | null {
@@ -108,22 +85,15 @@ function toRoundedMillions(value: number | null): number | null {
   return Math.round(value / 1_000_000);
 }
 
-function toScoredModel(
-  model: RankableModel,
-  maxCoding: number,
-  maxAgentic: number,
-): ScoredModel {
+function toScoredModel(model: RankableModel, maxCoding: number): ScoredModel {
   const normalizedCoding = normalizeScore(model.coding, maxCoding);
-  const normalizedAgentic = normalizeScore(model.agentic, maxAgentic);
-  const baseScore = calculateBaseScore(normalizedCoding, normalizedAgentic);
   const outputTokens = toValidOutputTokens(model.intelligenceIndexOutputTokens);
 
   return {
     model: model.model,
     slug: model.slug,
-    internalScore: baseScore,
+    internalScore: normalizedCoding,
     normalizedCoding,
-    normalizedAgentic,
     tokens: toRoundedMillions(outputTokens),
   };
 }
@@ -144,14 +114,14 @@ export class ModelRankingService {
 
     if (rankableModels.length === 0) {
       throw new AiParseError(
-        "No models with slug, coding, and agentic scores were found",
+        "No models with slug and coding scores were found",
       );
     }
 
-    const { maxCoding, maxAgentic } = getNormalizationMaxima(rankableModels);
+    const maxCoding = getMaxCoding(rankableModels);
 
     const scoredModels = rankableModels.map((model) =>
-      toScoredModel(model, maxCoding, maxAgentic),
+      toScoredModel(model, maxCoding),
     );
 
     const rankedModels = scoredModels.sort(compareFinalModels);
