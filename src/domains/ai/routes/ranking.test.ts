@@ -23,14 +23,14 @@ describe("rankingRoutes", () => {
     const modelRankingService = {
       getRanking: vi.fn().mockResolvedValue([
         {
+          rank: 1,
           model: "Model B",
-          score: 100,
           coding: 80,
           tokens: 25,
         },
         {
+          rank: 2,
           model: "Model A",
-          score: 91,
           coding: 70,
           tokens: null,
         },
@@ -47,14 +47,14 @@ describe("rankingRoutes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual([
       {
+        rank: 1,
         model: "Model B",
-        score: 100,
         coding: 80,
         tokens: 25,
       },
       {
+        rank: 2,
         model: "Model A",
-        score: 91,
         coding: 70,
         tokens: null,
       },

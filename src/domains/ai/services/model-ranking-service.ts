@@ -132,11 +132,9 @@ export class ModelRankingService {
       );
     }
 
-    const topInternalScore = rankedModels[0].internalScore;
-
-    return rankedModels.map((entry) => ({
+    return rankedModels.map((entry, index) => ({
+      rank: index + 1,
       model: entry.model,
-      score: Math.round((entry.internalScore / topInternalScore) * 100),
       coding: Math.round(entry.coding),
       tokens: entry.tokens,
     }));

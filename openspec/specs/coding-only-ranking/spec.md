@@ -33,7 +33,7 @@ The system SHALL include models that have valid coding scores, valid output-toke
 #### Scenario: Deprecated model excluded before scoring
 
 - **WHEN** a model has slug, coding score, valid output-token count, and `deprecated: true`
-- **THEN** the system SHALL exclude that model before calculating internal scores, sorting, and relative ranking scores
+- **THEN** the system SHALL exclude that model before calculating internal scores, sorting, and ranking positions
 
 #### Scenario: Model without deprecated field included
 
@@ -49,29 +49,24 @@ The system SHALL calculate each eligible model's internal score as its raw codin
 - **WHEN** multiple eligible models have coding scores and output-token counts
 - **THEN** the system SHALL compute each model's internal score as `coding_index / (output_tokens / 1_000_000)`
 
-#### Scenario: Single model always scores 100
+### Requirement: Return ordinal ranking positions
 
-- **WHEN** only one eligible model exists with valid coding and output-token values
-- **THEN** its public relative score SHALL be 100
+The system SHALL return AI model ranking items with `rank` as a 1-based ordinal position determined by internal efficiency score ordering.
 
-### Requirement: Return relative ranking scores
-
-The system SHALL return AI model ranking items with `score` expressed as a percentage relative to the internal efficiency score of the model at `position: 1`.
-
-#### Scenario: Top model score is 100
+#### Scenario: First model has rank 1
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** the model at `position: 1` SHALL have `score` equal to 100
+- **THEN** the model with the highest internal efficiency score SHALL have `rank` equal to 1
 
-#### Scenario: Lower-ranked scores are relative percentages
+#### Scenario: Subsequent models have consecutive ranks
 
-- **WHEN** the system returns ranked models below `position: 1`
-- **THEN** each lower-ranked model's `score` SHALL equal its internal efficiency score divided by the internal efficiency score of the first-ranked model, multiplied by 100 and rounded for response output
+- **WHEN** the system returns ranked models after position 1
+- **THEN** each subsequent model SHALL have `rank` equal to the previous model's rank plus 1
 
 #### Scenario: Non-positive top internal score is invalid
 
 - **WHEN** the first-ranked model's internal efficiency score is less than or equal to 0
-- **THEN** the system SHALL fail the ranking instead of returning relative scores
+- **THEN** the system SHALL fail the ranking instead of returning ranking positions
 
 ### Requirement: Ranking ties are deterministic
 
@@ -99,5 +94,5 @@ The system SHALL NOT include model price fields, speed fields, or release-date f
 #### Scenario: Ranking response excludes price, speed, and date
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `model`, `score`, and `tokens`
+- **THEN** each ranking item SHALL include `rank`, `model`, and `tokens`
 - **AND** each ranking item SHALL NOT include `price1m`, `speed`, `tokensPerSecond`, `date`, or `releaseDate`

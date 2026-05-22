@@ -26,13 +26,13 @@ function createServiceForModels(models: ArtificialAnalysisModel[]) {
 }
 
 function rankedModel(
-  overrides: Pick<RankedModel, "model" | "score"> & Partial<RankedModel>,
+  overrides: Pick<RankedModel, "model" | "rank"> & Partial<RankedModel>,
 ): RankedModel {
-  const { model, score, tokens = 100, coding = 0 } = overrides;
+  const { model, rank, tokens = 100, coding = 0 } = overrides;
 
   return {
+    rank,
     model,
-    score,
     coding,
     tokens,
   };
@@ -81,8 +81,8 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Model B", score: 100, tokens: 100, coding: 80 }),
-      rankedModel({ model: "Model A", score: 8, tokens: 50, coding: 50 }),
+      rankedModel({ model: "Model B", rank: 1, tokens: 100, coding: 80 }),
+      rankedModel({ model: "Model A", rank: 2, tokens: 50, coding: 50 }),
     ]);
   });
 
@@ -105,13 +105,13 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({
         model: "High Coding High Tokens",
-        score: 100,
+        rank: 1,
         tokens: 125,
         coding: 100,
       }),
       rankedModel({
         model: "Lower Coding Low Tokens",
-        score: 23,
+        rank: 2,
         tokens: 75,
         coding: 75,
       }),
@@ -154,10 +154,10 @@ describe("ModelRankingService", () => {
       "Beta Name",
       "Lower Coding",
     ]);
-    expect(ranking[0].score).toBe(100);
-    expect(ranking[1].score).toBe(2);
-    expect(ranking[2].score).toBe(2);
-    expect(ranking[3].score).toBe(2);
+    expect(ranking[0].rank).toBe(1);
+    expect(ranking[1].rank).toBe(2);
+    expect(ranking[2].rank).toBe(3);
+    expect(ranking[3].rank).toBe(4);
   });
 
   it("uses model name after efficiency, coding, and output-token ties", async () => {
@@ -179,13 +179,13 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({
         model: "Alpha More Tokens",
-        score: 100,
+        rank: 1,
         tokens: 50,
         coding: 100,
       }),
       rankedModel({
         model: "Zulu Fewer Tokens",
-        score: 100,
+        rank: 2,
         tokens: 50,
         coding: 100,
       }),
@@ -212,11 +212,11 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({
         model: "GPT Efficient",
-        score: 100,
+        rank: 1,
         tokens: 10,
         coding: 50,
       }),
-      rankedModel({ model: "GPT Follower", score: 26, tokens: 10, coding: 40 }),
+      rankedModel({ model: "GPT Follower", rank: 2, tokens: 10, coding: 40 }),
     ]);
   });
 
@@ -276,7 +276,7 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Model A", score: 100, coding: 80 }),
+      rankedModel({ model: "Model A", rank: 1, coding: 80 }),
     ]);
   });
 
@@ -300,7 +300,7 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking).toEqual([
-      rankedModel({ model: "Active Model", score: 100, coding: 70 }),
+      rankedModel({ model: "Active Model", rank: 1, coding: 70 }),
     ]);
     expect(ranking[0]).not.toHaveProperty("deprecated");
   });
@@ -315,7 +315,7 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Unknown Lifecycle Model", score: 100, coding: 70 }),
+      rankedModel({ model: "Unknown Lifecycle Model", rank: 1, coding: 70 }),
     ]);
   });
 
@@ -353,7 +353,7 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({
         model: "Model With Output Tokens",
-        score: 100,
+        rank: 1,
         tokens: 25,
         coding: 70,
       }),
@@ -382,8 +382,8 @@ describe("ModelRankingService", () => {
     const ranking = await service.getRanking();
 
     expect(ranking).toEqual([
-      rankedModel({ model: "Old Model", score: 100, coding: 80 }),
-      rankedModel({ model: "Recent Model", score: 18, coding: 60 }),
+      rankedModel({ model: "Old Model", rank: 1, coding: 80 }),
+      rankedModel({ model: "Recent Model", rank: 2, coding: 60 }),
     ]);
     expect(ranking[0]).not.toHaveProperty("date");
     expect(ranking[0]).not.toHaveProperty("releaseDate");
@@ -406,8 +406,8 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "High Score Model", score: 100, coding: 100 }),
-      rankedModel({ model: "Low Score Model", score: 5, coding: 60 }),
+      rankedModel({ model: "High Score Model", rank: 1, coding: 100 }),
+      rankedModel({ model: "Low Score Model", rank: 2, coding: 60 }),
     ]);
   });
 });

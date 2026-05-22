@@ -19,17 +19,12 @@ The system SHALL rank eligible models primarily by their coding efficiency, defi
 
 - **WHEN** multiple eligible models have efficiency scores
 - **THEN** the system SHALL order models by internal efficiency score descending
-- **AND** the system SHALL calculate public relative scores by dividing each model's internal score by the top model's internal score, multiplied by 100 and rounded
-
-#### Scenario: Top model always scores 100
-
-- **WHEN** the system returns a successful efficiency-based ranking
-- **THEN** the top-ranked model SHALL have `score` equal to 100
+- **AND** the system SHALL assign 1-based ordinal ranks based on the sorted order
 
 #### Scenario: Non-positive top internal score is invalid
 
 - **WHEN** the top-ranked model's internal efficiency score is less than or equal to zero
-- **THEN** the system SHALL fail the ranking instead of returning relative scores
+- **THEN** the system SHALL fail the ranking instead of returning ranking positions
 
 ### Requirement: Require output tokens for ranking eligibility
 
@@ -78,14 +73,14 @@ The system SHALL remove models whose slugs match configured exclusion prefixes b
 - **WHEN** the excluded model with the highest efficiency score has a slug matching an exclusion prefix
 - **THEN** the system SHALL compute the top efficiency score and relative scores from the remaining non-excluded models
 
-### Requirement: Public response includes raw coding score
+### Requirement: Public response includes rank and raw coding score
 
-The system SHALL include the rounded integer coding index in each ranked model entry.
+The system SHALL include the 1-based ordinal rank and the rounded integer coding index in each ranked model entry.
 
 #### Scenario: Response object contains all expected fields
 
 - **WHEN** the system returns a ranked model entry
-- **THEN** the entry SHALL contain `model` (string), `score` (number 0-100), `tokens` (integer millions or null), and `coding` (integer)
+- **THEN** the entry SHALL contain `rank` (integer), `model` (string), `tokens` (integer millions or null), and `coding` (integer)
 
 #### Scenario: Coding is rounded to nearest integer
 
