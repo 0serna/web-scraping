@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Rank models with coding scores only
+### Requirement: Rank models with coding and agentic scores
 
 The system SHALL include models that have valid coding scores and are not explicitly marked as deprecated when calculating the AI model ranking. Agentic scores and reasoning status SHALL NOT affect eligibility.
 

@@ -31,7 +31,7 @@ The first occurrence of a model SHALL preserve all its fields in the final resul
 
 ### Requirement: Performance data merged by slug after deduplication
 
-After deduplicating metadata, performance data SHALL be merged using slug-based lookup, overwriting only the performance-specific fields (`coding`, `agentic`, `blendedPrice`, `inputPrice`, `outputPrice`).
+After deduplicating metadata, performance data SHALL be merged using slug-based lookup, overwriting only the performance-specific fields (`coding`, `blendedPrice`, `inputPrice`, `outputPrice`).
 
 #### Scenario: Performance data merged correctly
 

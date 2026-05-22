@@ -31,17 +31,17 @@ The system SHALL exclude models from the AI model ranking when their normalized 
 
 #### Scenario: Explicitly deprecated model is excluded
 
-- **WHEN** a model has slug, reasoning status, coding score, agentic score, and `deprecated: true`
+- **WHEN** a model has slug, coding score, and `deprecated: true`
 - **THEN** the system SHALL exclude that model before calculating internal scores and relative ranking scores
 
 #### Scenario: Explicitly non-deprecated model remains eligible
 
-- **WHEN** a model has slug, reasoning status, coding score, agentic score, and `deprecated: false`
+- **WHEN** a model has slug, coding score, and `deprecated: false`
 - **THEN** the system SHALL keep that model eligible for existing ranking filters
 
 #### Scenario: Missing deprecated value remains eligible
 
-- **WHEN** a model has slug, reasoning status, coding score, agentic score, and no explicit deprecated value
+- **WHEN** a model has slug, coding score, and no explicit deprecated value
 - **THEN** the system SHALL keep that model eligible for existing ranking filters
 
 #### Scenario: Deprecated top model does not define relative scores
