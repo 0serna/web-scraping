@@ -53,7 +53,7 @@ function excludedPrefixModel(
 }
 
 describe("ModelRankingService", () => {
-  it("filters models without required fields and ranks by coding efficiency", async () => {
+  it("filters models without required fields and ranks by coding score", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "model-a",
@@ -81,12 +81,13 @@ describe("ModelRankingService", () => {
     ]);
 
     await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Model B", rank: 1, tokens: 100, coding: 80 }),
-      rankedModel({ model: "Model A", rank: 2, tokens: 50, coding: 50 }),
+      rankedModel({ model: "Model D", rank: 1, tokens: null, coding: 90 }),
+      rankedModel({ model: "Model B", rank: 2, tokens: 100, coding: 80 }),
+      rankedModel({ model: "Model A", rank: 3, tokens: 50, coding: 50 }),
     ]);
   });
 
-  it("orders by efficiency instead of raw coding score", async () => {
+  it("orders by coding score descending", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "high-coding-high-tokens",
@@ -118,7 +119,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("uses coding, output tokens, and model name as deterministic efficiency tie-breakers", async () => {
+  it("uses coding, output tokens, and model name as deterministic tie-breakers", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "lower-coding",
@@ -160,7 +161,7 @@ describe("ModelRankingService", () => {
     expect(ranking[3].rank).toBe(4);
   });
 
-  it("uses model name after efficiency, coding, and output-token ties", async () => {
+  it("uses model name after coding and output-token ties", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "zulu-fewer-tokens",
@@ -192,7 +193,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("excludes configured slug prefixes before efficiency scoring", async () => {
+  it("excludes configured slug prefixes before ranking", async () => {
     const service = createServiceForModels([
       excludedPrefixModel(),
       rankingModel({
@@ -226,39 +227,18 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([]);
   });
 
-  it("throws when no model has valid coding and output-token data", async () => {
+  it("throws when no model has valid coding data", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "no-coding",
         model: "No Coding",
         coding: null,
       }),
-      rankingModel({
-        slug: "no-output-tokens",
-        model: "No Output Tokens",
-        coding: 80,
-        intelligenceIndexOutputTokens: null,
-      }),
     ]);
 
     await expect(service.getRanking()).rejects.toMatchObject({
       name: "AiParseError",
-      message: "No models with slug, coding, and output tokens were found",
-    });
-  });
-
-  it("throws when first-ranked model has non-positive internal score", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "zero-coding",
-        model: "Zero Coding",
-        coding: 0,
-        intelligenceIndexOutputTokens: 10_000_000,
-      }),
-    ]);
-
-    await expect(service.getRanking()).rejects.toMatchObject({
-      name: "AiParseError",
+      message: "No models with slug and coding were found",
     });
   });
 
@@ -280,7 +260,7 @@ describe("ModelRankingService", () => {
     ]);
   });
 
-  it("excludes deprecated models before calculating relative scores", async () => {
+  it("excludes deprecated models before ranking", async () => {
     const service = createServiceForModels([
       rankingModel({
         slug: "deprecated-top-model",

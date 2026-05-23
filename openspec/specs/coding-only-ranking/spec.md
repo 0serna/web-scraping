@@ -2,90 +2,94 @@
 
 ## Purpose
 
-Rank AI models by coding efficiency using their coding index and output token counts.
+Rank AI models by their coding score, using output-token count and model name as deterministic tie-breakers.
 
 ## Requirements
 
 ### Requirement: Rank models with coding scores only
 
-The system SHALL include models that have valid coding scores, valid output-token counts, and are not explicitly marked as deprecated when calculating the AI model ranking.
+The system SHALL include models that have a valid coding score and are not explicitly marked as deprecated when calculating the AI model ranking.
 
-#### Scenario: All models with valid coding and output tokens are eligible
+#### Scenario: All models with valid coding are eligible
 
-- **WHEN** Artificial Analysis returns models with coding scores and valid output-token counts, regardless of other fields
-- **THEN** the system SHALL calculate internal scores, sorting, and ranking positions using all models that have valid coding scores, valid output-token counts, and are not deprecated
+- **WHEN** Artificial Analysis returns models with coding scores, regardless of other fields
+- **THEN** the system SHALL calculate sorting and ranking positions using all models that have valid coding scores and are not deprecated
 
 #### Scenario: Model without coding score excluded
 
 - **WHEN** a model has slug but does not have a valid coding value
 - **THEN** the system SHALL exclude that model from the ranking
 
-#### Scenario: Model without output tokens excluded
+#### Scenario: Model without output tokens included
 
 - **WHEN** a model has slug and a valid coding value but lacks a finite positive output-token count
-- **THEN** the system SHALL exclude that model from the ranking
+- **THEN** the system SHALL include that model in the ranking with `tokens: null`, sorted last among models with equal coding score
 
 #### Scenario: Model without price included
 
-- **WHEN** a model has valid coding and output-token values but lacks blended price data
+- **WHEN** a model has valid coding but lacks blended price data
 - **THEN** the system SHALL include that model in the ranking
 
-#### Scenario: Deprecated model excluded before scoring
+#### Scenario: Deprecated model excluded before ranking
 
-- **WHEN** a model has slug, coding score, valid output-token count, and `deprecated: true`
-- **THEN** the system SHALL exclude that model before calculating internal scores, sorting, and ranking positions
+- **WHEN** a model has slug, coding score, and `deprecated: true`
+- **THEN** the system SHALL exclude that model before sorting and ranking
 
 #### Scenario: Model without deprecated field included
 
-- **WHEN** a model has slug, coding score, valid output-token count, and no explicit deprecated value
+- **WHEN** a model has slug, coding score, and no explicit deprecated value
 - **THEN** the system SHALL include that model in the ranking
 
-### Requirement: Internal score is normalized coding
+### Requirement: Rank primarily by rounded coding score
 
-The system SHALL calculate each eligible model's internal score as its raw coding score divided by its output-token count expressed in millions.
+The system SHALL round each eligible model's coding score to the nearest integer before sorting.
 
-#### Scenario: Efficiency calculation
+#### Scenario: Coding score rounded before comparison
 
-- **WHEN** multiple eligible models have coding scores and output-token counts
-- **THEN** the system SHALL compute each model's internal score as `coding_index / (output_tokens / 1_000_000)`
+- **WHEN** two models have raw coding scores of 59.11 and 58.53 respectively
+- **THEN** the system SHALL round both to 59 and treat them as equal in the primary sort
+
+### Requirement: Tie-breakers are deterministic
+
+The system SHALL use output-token count ascending and model name ascending as tie-breakers when rounded coding scores are equal.
+
+#### Scenario: Output tokens break coding ties
+
+- **WHEN** two models have equal rounded coding scores
+- **THEN** the system SHALL order them by output-token count ascending with null values sorted last
+
+#### Scenario: Model name breaks remaining ties
+
+- **WHEN** two models have equal rounded coding scores and equal output-token counts
+- **THEN** the system SHALL order them by model name ascending
 
 ### Requirement: Return ordinal ranking positions
 
-The system SHALL return AI model ranking items with `rank` as a 1-based ordinal position determined by internal efficiency score ordering.
+The system SHALL return AI model ranking items with `rank` as a 1-based ordinal position determined by the sort order.
 
 #### Scenario: First model has rank 1
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** the model with the highest internal efficiency score SHALL have `rank` equal to 1
+- **THEN** the model ordered first SHALL have `rank` equal to 1
 
 #### Scenario: Subsequent models have consecutive ranks
 
 - **WHEN** the system returns ranked models after position 1
 - **THEN** each subsequent model SHALL have `rank` equal to the previous model's rank plus 1
 
-#### Scenario: Non-positive top internal score is invalid
+### Requirement: Cap ranking at fixed maximum size
 
-- **WHEN** the first-ranked model's internal efficiency score is less than or equal to 0
-- **THEN** the system SHALL fail the ranking instead of returning ranking positions
+The system SHALL limit the ranking output to a fixed maximum number of models.
 
-### Requirement: Ranking ties are deterministic
+#### Scenario: Ranking exceeds maximum size
 
-The system SHALL use coding score, output-token count, and model name as tie-breakers when internal efficiency scores are equal.
+- **WHEN** more eligible models exist than the maximum allowed ranking entries
+- **THEN** the system SHALL return at most `MAX_RANKING_SIZE` models
 
-#### Scenario: Coding score breaks efficiency ties
+#### Scenario: Ranking within maximum size
 
-- **WHEN** two models have equal internal efficiency scores
-- **THEN** the system SHALL order them by coding score descending
-
-#### Scenario: Output tokens breaks coding ties
-
-- **WHEN** two models have equal internal efficiency scores and equal coding scores
-- **THEN** the system SHALL order them by output-token count ascending
-
-#### Scenario: Model name breaks remaining ties
-
-- **WHEN** two models have equal internal efficiency scores, equal coding scores, and equal output-token counts
-- **THEN** the system SHALL order them by model name ascending
+- **WHEN** eligible models are fewer than or equal to the maximum allowed ranking entries
+- **THEN** the system SHALL return all eligible models
 
 ### Requirement: Omit price from ranking response
 
@@ -94,5 +98,19 @@ The system SHALL NOT include model price fields, speed fields, or release-date f
 #### Scenario: Ranking response excludes price, speed, and date
 
 - **WHEN** the system returns a successful AI model ranking
-- **THEN** each ranking item SHALL include `rank`, `model`, and `tokens`
+- **THEN** each ranking item SHALL include `rank`, `model`, `coding`, and `tokens`
 - **AND** each ranking item SHALL NOT include `price1m`, `speed`, `tokensPerSecond`, `date`, or `releaseDate`
+
+### Requirement: Include output-token millions in ranking response
+
+The system SHALL include `tokens` as an informational field on each ranked model in the AI model ranking response.
+
+#### Scenario: Output-token millions extracted from intelligence token counts
+
+- **WHEN** Artificial Analysis model data contains `intelligence_index_token_counts.output_tokens` with a valid positive number
+- **THEN** the system SHALL expose that value divided by 1,000,000 and rounded to the nearest integer as `tokens` on the ranked model
+
+#### Scenario: Output-token millions is null when token count data missing
+
+- **WHEN** Artificial Analysis model data does not contain a valid positive `intelligence_index_token_counts.output_tokens` value
+- **THEN** the system SHALL set `tokens` to `null` on the ranked model

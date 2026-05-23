@@ -816,7 +816,7 @@ describe("ArtificialAnalysisClient", () => {
     await expectCachedModelsRejected(staleModels);
   });
 
-  it("rejects cached model without output tokens", async () => {
+  it("accepts cached model without output tokens", async () => {
     const staleModels: ArtificialAnalysisModel[] = [
       {
         slug: "no-output-tokens",
@@ -830,7 +830,18 @@ describe("ArtificialAnalysisClient", () => {
       },
     ];
 
-    await expectCachedModelsRejected(staleModels);
+    const { ArtificialAnalysisClient } = await loadArtificialAnalysisClient(
+      async (_key, fetcher, validator) => {
+        if (validator(staleModels)) return staleModels;
+        throw new Error("should not refetch");
+      },
+    );
+
+    await expect(
+      getModelsFromClient(ArtificialAnalysisClient),
+    ).resolves.toContainEqual(
+      expect.objectContaining({ slug: "no-output-tokens", coding: 70 }),
+    );
   });
 
   it("fills scores from embedded performance data into metadata models by slug", async () => {

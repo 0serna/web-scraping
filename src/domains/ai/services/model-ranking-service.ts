@@ -8,49 +8,37 @@ export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
   "muse",
 ];
 
-function hasRequiredModelData(model: ArtificialAnalysisModel): boolean {
-  return (
-    model.coding !== null &&
-    model.intelligenceIndexOutputTokens !== null &&
-    Number.isFinite(model.intelligenceIndexOutputTokens) &&
-    model.intelligenceIndexOutputTokens > 0
-  );
-}
+export const MAX_RANKING_SIZE = 50;
 
 function isRankableModel(
   model: ArtificialAnalysisModel,
 ): model is RankableModel {
   return (
-    model.slug.length > 0 &&
-    model.deprecated !== true &&
-    hasRequiredModelData(model)
+    model.slug.length > 0 && model.deprecated !== true && model.coding !== null
   );
 }
 
 interface ScoredModel {
   model: string;
-  slug: string;
-  internalScore: number;
   coding: number;
-  outputTokens: number;
+  outputTokens: number | null;
   tokens: number | null;
 }
 
 type RankableModel = ArtificialAnalysisModel & {
   slug: string;
   coding: number;
-  intelligenceIndexOutputTokens: number;
+  intelligenceIndexOutputTokens: number | null;
 };
-
-function compareInternalScore(left: ScoredModel, right: ScoredModel): number {
-  return right.internalScore - left.internalScore;
-}
 
 function compareCoding(left: ScoredModel, right: ScoredModel): number {
   return right.coding - left.coding;
 }
 
 function compareOutputTokens(left: ScoredModel, right: ScoredModel): number {
+  if (left.outputTokens === null && right.outputTokens === null) return 0;
+  if (left.outputTokens === null) return 1;
+  if (right.outputTokens === null) return -1;
   return left.outputTokens - right.outputTokens;
 }
 
@@ -59,12 +47,7 @@ function compareModelName(left: ScoredModel, right: ScoredModel): number {
 }
 
 function compareFinalModels(left: ScoredModel, right: ScoredModel): number {
-  const comparators = [
-    compareInternalScore,
-    compareCoding,
-    compareOutputTokens,
-    compareModelName,
-  ];
+  const comparators = [compareCoding, compareOutputTokens, compareModelName];
 
   for (const compare of comparators) {
     const result = compare(left, right);
@@ -80,16 +63,11 @@ function toRoundedMillions(value: number | null): number | null {
 }
 
 function toScoredModel(model: RankableModel): ScoredModel {
-  const outputTokens = model.intelligenceIndexOutputTokens;
-  const outputTokensMillions = outputTokens / 1_000_000;
-
   return {
     model: model.model,
-    slug: model.slug,
-    internalScore: model.coding ** 6 / Math.sqrt(outputTokensMillions),
-    coding: model.coding,
-    outputTokens,
-    tokens: toRoundedMillions(outputTokens),
+    coding: Math.round(model.coding),
+    outputTokens: model.intelligenceIndexOutputTokens,
+    tokens: toRoundedMillions(model.intelligenceIndexOutputTokens),
   };
 }
 
@@ -108,9 +86,7 @@ export class ModelRankingService {
     const rankableModels = models.filter(isRankableModel);
 
     if (rankableModels.length === 0) {
-      throw new AiParseError(
-        "No models with slug, coding, and output tokens were found",
-      );
+      throw new AiParseError("No models with slug and coding were found");
     }
 
     const visibleRankableModels = rankableModels.filter(
@@ -126,16 +102,10 @@ export class ModelRankingService {
       .map(toScoredModel)
       .sort(compareFinalModels);
 
-    if (rankedModels[0].internalScore <= 0) {
-      throw new AiParseError(
-        "First-ranked model has a non-positive internal score",
-      );
-    }
-
-    return rankedModels.map((entry, index) => ({
+    return rankedModels.slice(0, MAX_RANKING_SIZE).map((entry, index) => ({
       rank: index + 1,
       model: entry.model,
-      coding: Math.round(entry.coding),
+      coding: entry.coding,
       tokens: entry.tokens,
     }));
   }
