@@ -6,9 +6,10 @@ export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
   "claude",
   "gemini",
   "muse",
+  "kat",
 ];
 
-export const MAX_RANKING_SIZE = 50;
+export const MAX_RANKING_SIZE = 25;
 
 function isRankableModel(
   model: ArtificialAnalysisModel,

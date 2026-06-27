@@ -140,6 +140,22 @@ function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
   };
 }
 
+function modelWithCanonicalTokenCounts(slug: string, output?: number): unknown {
+  return {
+    slug,
+    short_name: slug
+      .split("-")
+      .map((part) => part[0].toUpperCase() + part.slice(1))
+      .join(" "),
+    frontier_model: true,
+    coding_index: 70,
+    canonicalIntelligenceIndexTokenCount:
+      output === undefined
+        ? undefined
+        : { output, input: 1000, answer: 500, reasoning: 200 },
+  };
+}
+
 function freshRawModel(slug = "fresh-model"): unknown {
   return {
     slug,
@@ -1048,5 +1064,103 @@ describe("ArtificialAnalysisClient", () => {
       }),
     );
     expect(result[0]).not.toHaveProperty("releaseDate");
+  });
+
+  it("parses canonicalIntelligenceIndexTokenCount.output from model objects", async () => {
+    const html = buildHtmlWithModels([
+      modelWithCanonicalTokenCounts("model-canonical-tokens", 50000),
+    ]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-canonical-tokens",
+        intelligenceIndexOutputTokens: 50000,
+      }),
+    );
+  });
+
+  it("prefers canonicalIntelligenceIndexTokenCount.output over legacy field", async () => {
+    const html = buildHtmlWithModels([
+      {
+        slug: "model-both-fields",
+        short_name: "Model Both Fields",
+        frontier_model: true,
+        coding_index: 70,
+        intelligence_index_token_counts: {
+          output_tokens: 25000,
+        },
+        canonicalIntelligenceIndexTokenCount: {
+          output: 50000,
+          input: 1000,
+          answer: 500,
+          reasoning: 200,
+        },
+      },
+    ]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-both-fields",
+        intelligenceIndexOutputTokens: 50000,
+      }),
+    );
+  });
+
+  it("falls back to legacy field when canonical output is missing", async () => {
+    const html = buildHtmlWithModels([
+      {
+        slug: "model-canonical-missing",
+        short_name: "Model Canonical Missing",
+        frontier_model: true,
+        coding_index: 70,
+        intelligence_index_token_counts: {
+          output_tokens: 25000,
+        },
+        canonicalIntelligenceIndexTokenCount: {},
+      },
+    ]);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-canonical-missing",
+        intelligenceIndexOutputTokens: 25000,
+      }),
+    );
+  });
+
+  it("merges canonical token counts by slug from performance data", async () => {
+    const metadataModels = [
+      {
+        slug: "model-merge-canonical",
+        name: "Model Merge Canonical",
+      },
+    ];
+
+    const performanceModels = [
+      {
+        slug: "model-merge-canonical",
+        frontier_model: true,
+        coding_index: 51.48,
+        canonicalIntelligenceIndexTokenCount: {
+          output: 72301736,
+          input: 364032098,
+          answer: 4392561,
+          reasoning: 67909175,
+        },
+      },
+    ];
+
+    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
+    const result = await parseModelsFromHtml(html);
+
+    expect(result).toContainEqual(
+      expect.objectContaining({
+        slug: "model-merge-canonical",
+        intelligenceIndexOutputTokens: 72301736,
+      }),
+    );
   });
 });

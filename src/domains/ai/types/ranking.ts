@@ -31,6 +31,12 @@ export interface RawArtificialAnalysisModel {
   intelligence_index_token_counts?: {
     output_tokens?: number;
   };
+  canonicalIntelligenceIndexTokenCount?: {
+    input?: number;
+    output?: number;
+    answer?: number;
+    reasoning?: number;
+  };
 }
 
 export interface PerformanceData {

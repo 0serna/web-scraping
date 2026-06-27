@@ -144,10 +144,21 @@ function isPositiveFiniteNumber(value: unknown): value is number {
 }
 
 function resolveOutputTokens(raw: RawArtificialAnalysisModel): number | null {
-  const tokenCounts = raw.intelligence_index_token_counts;
-  if (!tokenCounts || typeof tokenCounts !== "object") return null;
-  const value = tokenCounts.output_tokens;
-  return isPositiveFiniteNumber(value) ? value : null;
+  // Prefer canonicalIntelligenceIndexTokenCount.output (current field)
+  const canonicalCounts = raw.canonicalIntelligenceIndexTokenCount;
+  if (canonicalCounts && typeof canonicalCounts === "object") {
+    const value = canonicalCounts.output;
+    if (isPositiveFiniteNumber(value)) return value;
+  }
+
+  // Fallback to legacy field for compatibility
+  const legacyCounts = raw.intelligence_index_token_counts;
+  if (legacyCounts && typeof legacyCounts === "object") {
+    const value = legacyCounts.output_tokens;
+    if (isPositiveFiniteNumber(value)) return value;
+  }
+
+  return null;
 }
 
 function resolveDeprecated(
