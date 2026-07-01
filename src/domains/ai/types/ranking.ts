@@ -15,6 +15,23 @@ export interface RankedModel {
   model: string;
   coding: number;
   tokens: number | null;
+  deepSwe: number | null;
+}
+
+export interface DeepSweRow {
+  model: string;
+  reasoning_effort: string | null;
+  pass_rate: number;
+}
+
+export interface DeepSweLeaderboard {
+  rows: DeepSweRow[];
+}
+
+export interface DeepSweScore {
+  model: string;
+  effort: string | null;
+  score: number;
 }
 
 export interface RawArtificialAnalysisModel {

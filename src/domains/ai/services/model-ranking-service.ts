@@ -1,6 +1,11 @@
 import { AiParseError } from "../types/errors.js";
-import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
+import type {
+  ArtificialAnalysisModel,
+  RankedModel,
+  DeepSweScore,
+} from "../types/ranking.js";
 import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
+import { DeepSweClient, matchDeepSweScore } from "./deepswe-client.js";
 
 export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
   "claude",
@@ -20,6 +25,7 @@ function isRankableModel(
 }
 
 interface ScoredModel {
+  slug: string;
   model: string;
   coding: number;
   outputTokens: number | null;
@@ -65,6 +71,7 @@ function toRoundedMillions(value: number | null): number | null {
 
 function toScoredModel(model: RankableModel): ScoredModel {
   return {
+    slug: model.slug,
     model: model.model,
     coding: Math.round(model.coding),
     outputTokens: model.intelligenceIndexOutputTokens,
@@ -74,11 +81,14 @@ function toScoredModel(model: RankableModel): ScoredModel {
 
 export class ModelRankingService {
   private artificialAnalysisClient;
+  private deepSweClient;
 
   constructor(
     artificialAnalysisClient: Pick<ArtificialAnalysisClient, "getModels">,
+    deepSweClient?: Pick<DeepSweClient, "getScores">,
   ) {
     this.artificialAnalysisClient = artificialAnalysisClient;
+    this.deepSweClient = deepSweClient;
   }
 
   async getRanking(): Promise<RankedModel[]> {
@@ -103,11 +113,29 @@ export class ModelRankingService {
       .map(toScoredModel)
       .sort(compareFinalModels);
 
-    return rankedModels.slice(0, MAX_RANKING_SIZE).map((entry, index) => ({
-      rank: index + 1,
-      model: entry.model,
-      coding: entry.coding,
-      tokens: entry.tokens,
-    }));
+    // Fetch DeepSWE scores (non-blocking enrichment)
+    let deepSweScores: DeepSweScore[] = [];
+    try {
+      if (this.deepSweClient) {
+        deepSweScores = await this.deepSweClient.getScores();
+      }
+    } catch {
+      // DeepSWE enrichment unavailable
+    }
+
+    return rankedModels.slice(0, MAX_RANKING_SIZE).map((entry, index) => {
+      const deepSwe =
+        deepSweScores.length > 0
+          ? matchDeepSweScore(entry.slug, deepSweScores)
+          : null;
+
+      return {
+        rank: index + 1,
+        model: entry.model,
+        coding: entry.coding,
+        tokens: entry.tokens,
+        deepSwe,
+      };
+    });
   }
 }

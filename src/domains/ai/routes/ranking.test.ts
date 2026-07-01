@@ -27,12 +27,14 @@ describe("rankingRoutes", () => {
           model: "Model B",
           coding: 80,
           tokens: 25,
+          deepSwe: 65,
         },
         {
           rank: 2,
           model: "Model A",
           coding: 70,
           tokens: null,
+          deepSwe: null,
         },
       ]),
     };
@@ -51,12 +53,14 @@ describe("rankingRoutes", () => {
         model: "Model B",
         coding: 80,
         tokens: 25,
+        deepSwe: 65,
       },
       {
         rank: 2,
         model: "Model A",
         coding: 70,
         tokens: null,
+        deepSwe: null,
       },
     ]);
   });

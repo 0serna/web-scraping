@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ArtificialAnalysisModel, RankedModel } from "../types/ranking.js";
+import type {
+  ArtificialAnalysisModel,
+  DeepSweScore,
+  RankedModel,
+} from "../types/ranking.js";
 import {
   EXCLUDED_SLUG_PREFIXES,
   ModelRankingService,
@@ -19,22 +23,31 @@ function rankingModel(
   };
 }
 
-function createServiceForModels(models: ArtificialAnalysisModel[]) {
-  return new ModelRankingService({
-    getModels: vi.fn().mockResolvedValue(models),
-  } as never);
+function createServiceForModels(
+  models: ArtificialAnalysisModel[],
+  deepSweScores?: DeepSweScore[],
+) {
+  const deepSweClient = deepSweScores
+    ? { getScores: vi.fn().mockResolvedValue(deepSweScores) }
+    : undefined;
+
+  return new ModelRankingService(
+    { getModels: vi.fn().mockResolvedValue(models) } as never,
+    deepSweClient as never,
+  );
 }
 
 function rankedModel(
   overrides: Pick<RankedModel, "model" | "rank"> & Partial<RankedModel>,
 ): RankedModel {
-  const { model, rank, tokens = 100, coding = 0 } = overrides;
+  const { model, rank, tokens = 100, coding = 0, deepSwe = null } = overrides;
 
   return {
     rank,
     model,
     coding,
     tokens,
+    deepSwe,
   };
 }
 
@@ -388,6 +401,118 @@ describe("ModelRankingService", () => {
     await expect(service.getRanking()).resolves.toEqual([
       rankedModel({ model: "High Score Model", rank: 1, coding: 100 }),
       rankedModel({ model: "Low Score Model", rank: 2, coding: 60 }),
+    ]);
+  });
+
+  it("enriches models with matched DeepSWE scores", async () => {
+    const deepSweScores: DeepSweScore[] = [
+      { model: "gpt-5-5", effort: "high", score: 64 },
+      { model: "gpt-5-5", effort: "xhigh", score: 67 },
+      { model: "glm-5-2", effort: "high", score: 36 },
+    ];
+
+    const service = createServiceForModels(
+      [
+        rankingModel({
+          slug: "gpt-5.5 [high]",
+          model: "GPT 5.5 High",
+          coding: 100,
+        }),
+        rankingModel({
+          slug: "glm-5.2 [high]",
+          model: "GLM 5.2 High",
+          coding: 90,
+        }),
+        rankingModel({
+          slug: "unknown-model",
+          model: "Unknown Model",
+          coding: 80,
+        }),
+      ],
+      deepSweScores,
+    );
+
+    await expect(service.getRanking()).resolves.toEqual([
+      rankedModel({ model: "GPT 5.5 High", rank: 1, coding: 100, deepSwe: 64 }),
+      rankedModel({ model: "GLM 5.2 High", rank: 2, coding: 90, deepSwe: 36 }),
+      rankedModel({
+        model: "Unknown Model",
+        rank: 3,
+        coding: 80,
+        deepSwe: null,
+      }),
+    ]);
+  });
+
+  it("does not change ranking order when DeepSWE scores are present", async () => {
+    const deepSweScores: DeepSweScore[] = [
+      { model: "lower-coding", effort: null, score: 90 },
+      { model: "higher-coding", effort: null, score: 50 },
+    ];
+
+    const service = createServiceForModels(
+      [
+        rankingModel({
+          slug: "higher-coding",
+          model: "Higher Coding",
+          coding: 100,
+        }),
+        rankingModel({
+          slug: "lower-coding",
+          model: "Lower Coding",
+          coding: 80,
+        }),
+      ],
+      deepSweScores,
+    );
+
+    const ranking = await service.getRanking();
+
+    // Ranking order determined by coding score, not DeepSWE
+    expect(ranking[0].model).toBe("Higher Coding");
+    expect(ranking[0].rank).toBe(1);
+    expect(ranking[1].model).toBe("Lower Coding");
+    expect(ranking[1].rank).toBe(2);
+  });
+
+  it("returns null for all deepSwe when DeepSWE client is unavailable", async () => {
+    const service = createServiceForModels([
+      rankingModel({
+        slug: "model-a",
+        model: "Model A",
+        coding: 100,
+      }),
+      rankingModel({
+        slug: "model-b",
+        model: "Model B",
+        coding: 80,
+      }),
+    ]);
+
+    await expect(service.getRanking()).resolves.toEqual([
+      rankedModel({ model: "Model A", rank: 1, coding: 100, deepSwe: null }),
+      rankedModel({ model: "Model B", rank: 2, coding: 80, deepSwe: null }),
+    ]);
+  });
+
+  it("returns null for all deepSwe when DeepSWE client throws", async () => {
+    const service = new ModelRankingService(
+      {
+        getModels: vi.fn().mockResolvedValue([
+          rankingModel({
+            slug: "model-a",
+            model: "Model A",
+            coding: 100,
+          }),
+        ]),
+      } as never,
+      {
+        getScores: vi.fn().mockRejectedValue(new Error("fetch failed")),
+      } as never,
+    );
+
+    await expect(service.getRanking()).resolves.toEqual([
+      rankedModel({ model: "Model A", rank: 1, coding: 100, deepSwe: null }),
     ]);
   });
 });
