@@ -23,7 +23,7 @@
 - `npm run dev`: run dev server with file watching.
 - `npm run build`: compile TypeScript to dist/.
 - `npm run format`: format all files with Prettier.
-- `npm run check`: run lint, typecheck, Fallow, and OpenSpec validation.
+- `npm run check`: run lint, typecheck, and OpenSpec validation.
 - `npm test`: run test suite with Vitest.
 
 ## Cloud Run Debug

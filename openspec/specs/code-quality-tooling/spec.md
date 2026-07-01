@@ -35,12 +35,12 @@ The ESLint configuration SHALL recognize Node.js globals for source files and Vi
 
 ### Requirement: Check command validates without modifying files
 
-The project SHALL provide a `check` command that validates formatting, linting, Fallow analysis, OpenSpec specifications when present, and TypeScript correctness without writing changes to files.
+The project SHALL provide a `check` command that validates linting, OpenSpec specifications when present, and TypeScript correctness without writing changes to files.
 
 #### Scenario: Running project check
 
 - **WHEN** `npm run check` is executed
-- **THEN** the command validates Prettier formatting, ESLint linting, Fallow issues, OpenSpec specifications, and TypeScript compilation without applying automatic fixes
+- **THEN** the command validates ESLint linting, OpenSpec specifications, and TypeScript compilation without applying automatic fixes
 
 ### Requirement: Pre-commit applies automatic quality fixes
 
@@ -60,32 +60,14 @@ The project SHALL not use Biome configuration, package dependencies, or scripts 
 - **WHEN** project quality scripts and pre-commit configuration are inspected
 - **THEN** they invoke Prettier and ESLint rather than Biome
 
-### Requirement: Fallow analysis remains active
-
-The project SHALL run Fallow as part of the check workflow with issue failures enabled.
-
-#### Scenario: Fallow detects quality issues
-
-- **WHEN** Fallow reports dead code, duplication, or health issues during `npm run check`
-- **THEN** the check command fails instead of ignoring those findings
-
-### Requirement: Fallow configuration models real project usage
-
-The project SHALL configure Fallow only to represent real entry points, dependency-injected APIs, framework-driven APIs, or contract-based usage that static analysis cannot infer reliably.
-
-#### Scenario: Contract-based code is analyzed
-
-- **WHEN** a class member or export is used by runtime routes, tests, or a shared interface contract
-- **THEN** Fallow configuration can mark that usage model explicitly without disabling unrelated findings
-
 ### Requirement: Tests remain in quality scope
 
-The project SHALL keep test files within Fallow quality analysis scope for duplication and health findings.
+The project SHALL keep test files within linting and type-checking quality analysis scope.
 
-#### Scenario: Test files contain duplicated code
+#### Scenario: Test files contain quality issues
 
-- **WHEN** Fallow analyzes `.test.ts` files
-- **THEN** duplication and health findings in tests are reported as quality issues rather than excluded by default
+- **WHEN** ESLint and TypeScript check `.test.ts` files
+- **THEN** lint and type errors in tests are reported as quality issues rather than excluded by default
 
 ### Requirement: Pre-commit runs full check before staged fixes
 

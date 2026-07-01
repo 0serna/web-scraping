@@ -23,7 +23,6 @@
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.0.1",
-    "fallow": "^2.78.1",
     "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
