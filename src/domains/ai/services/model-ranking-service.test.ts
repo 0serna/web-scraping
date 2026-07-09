@@ -14,10 +14,6 @@ function rankingModel(
     Pick<ArtificialAnalysisModel, "slug" | "model" | "coding">,
 ): ArtificialAnalysisModel {
   return {
-    frontierModel: false,
-    blendedPrice: null,
-    inputPrice: null,
-    outputPrice: null,
     intelligenceIndexOutputTokens: 100_000_000,
     ...overrides,
   };
@@ -261,10 +257,6 @@ describe("ModelRankingService", () => {
         slug: "model-a",
         model: "Model A",
         coding: 80,
-        frontierModel: false,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
       }),
     ]);
 

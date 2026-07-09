@@ -126,29 +126,14 @@ async function expectCachedModelsRejected(
   expectFreshModel(await getModelsFromClient(ArtificialAnalysisClient));
 }
 
-function modelWithTokenCounts(slug: string, outputTokens?: number): unknown {
-  return {
-    slug,
-    short_name: slug
-      .split("-")
-      .map((part) => part[0].toUpperCase() + part.slice(1))
-      .join(" "),
-    frontier_model: true,
-    coding_index: 70,
-    intelligence_index_token_counts:
-      outputTokens === undefined ? undefined : { output_tokens: outputTokens },
-  };
-}
-
 function modelWithCanonicalTokenCounts(slug: string, output?: number): unknown {
   return {
     slug,
-    short_name: slug
+    shortName: slug
       .split("-")
       .map((part) => part[0].toUpperCase() + part.slice(1))
       .join(" "),
-    frontier_model: true,
-    coding_index: 70,
+    codingIndex: 70,
     canonicalIntelligenceIndexTokenCount:
       output === undefined
         ? undefined
@@ -159,12 +144,13 @@ function modelWithCanonicalTokenCounts(slug: string, output?: number): unknown {
 function freshRawModel(slug = "fresh-model"): unknown {
   return {
     slug,
-    frontier_model: true,
-    short_name: "Fresh Model",
-    coding_index: 70,
-    price_1m_blended_3_to_1: 1.0,
-    intelligence_index_token_counts: {
-      output_tokens: 25_000,
+    shortName: "Fresh Model",
+    codingIndex: 70,
+    canonicalIntelligenceIndexTokenCount: {
+      output: 25_000,
+      input: 1000,
+      answer: 500,
+      reasoning: 200,
     },
   };
 }
@@ -173,11 +159,7 @@ function staleModel(overrides: Partial<ArtificialAnalysisModel> = {}) {
   return {
     slug: "stale-model",
     model: "Stale Model",
-    frontierModel: false,
     coding: 62,
-    blendedPrice: 0.5,
-    inputPrice: 0.3,
-    outputPrice: 0.7,
     intelligenceIndexOutputTokens: null,
     ...overrides,
   } satisfies ArtificialAnalysisModel;
@@ -187,21 +169,13 @@ function expectGpt55PerformanceModels(result: ArtificialAnalysisModel[]) {
   expect(result).toContainEqual({
     slug: "gpt-5-5-medium",
     model: "GPT-5.5 (medium)",
-    frontierModel: true,
     coding: 56.21,
-    blendedPrice: null,
-    inputPrice: null,
-    outputPrice: null,
     intelligenceIndexOutputTokens: null,
   });
   expect(result).toContainEqual({
     slug: "gpt-5-5",
     model: "GPT-5.5 (xhigh)",
-    frontierModel: true,
     coding: 59.12,
-    blendedPrice: null,
-    inputPrice: null,
-    outputPrice: null,
     intelligenceIndexOutputTokens: null,
   });
 }
@@ -214,18 +188,18 @@ describe("ArtificialAnalysisClient", () => {
     const html = buildHtmlWithModels([
       {
         slug: "model-a",
-        short_name: "Model A",
-        coding_index: 62,
-        price_1m_blended_3_to_1: 0.2625,
-        price_1m_input_tokens: 0.15,
-        price_1m_output_tokens: 0.6,
-        intelligence_index_token_counts: {
-          output_tokens: 15000,
+        shortName: "Model A",
+        codingIndex: 62,
+        canonicalIntelligenceIndexTokenCount: {
+          output: 15000,
+          input: 1000,
+          answer: 500,
+          reasoning: 200,
         },
       },
       {
         slug: "model-b",
-        model_name: "Model B",
+        name: "Model B",
       },
     ]);
 
@@ -237,21 +211,13 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "model-a",
         model: "Model A",
-        frontierModel: false,
         coding: 62,
-        blendedPrice: 0.2625,
-        inputPrice: 0.15,
-        outputPrice: 0.6,
         intelligenceIndexOutputTokens: 15000,
       },
       {
         slug: "model-b",
         model: "Model B",
-        frontierModel: false,
         coding: null,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: null,
       },
     ]);
@@ -269,8 +235,7 @@ describe("ArtificialAnalysisClient", () => {
         {
           slug: "model-c",
           name: "Model C",
-          coding_index: 63,
-          price_1m_blended_3_to_1: 1.5,
+          codingIndex: 63,
         },
       ],
       {
@@ -284,29 +249,23 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "model-c",
         model: "Model C",
-        frontierModel: false,
         coding: 63,
-        blendedPrice: 1.5,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: null,
       },
     ]);
   });
 
-  it("parses frontier models from embedded detail-page performance data", async () => {
+  it("parses current payload performance data", async () => {
     const html = buildHtmlWithEmbeddedPerformanceModels([
       {
         slug: "gpt-5-5",
-        short_name: "GPT-5.5 (xhigh)",
-        frontier_model: true,
-        coding_index: 59.12,
+        shortName: "GPT-5.5 (xhigh)",
+        codingIndex: 59.12,
       },
       {
         slug: "gpt-5-5-medium",
-        short_name: "GPT-5.5 (medium)",
-        frontier_model: true,
-        coding_index: 56.21,
+        shortName: "GPT-5.5 (medium)",
+        codingIndex: 56.21,
       },
     ]);
     const result = await parseModelsFromHtml(html);
@@ -361,10 +320,7 @@ describe("ArtificialAnalysisClient", () => {
     const performanceModels = [
       {
         slug: "gpt-5-4-mini",
-        coding_index: 51.48,
-        price_1m_blended_3_to_1: 1.6875,
-        price_1m_input_tokens: 0.75,
-        price_1m_output_tokens: 4.5,
+        codingIndex: 51.48,
       },
     ];
 
@@ -375,11 +331,7 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual({
       slug: "gpt-5-4-mini",
       model: "GPT-5.4 mini (xhigh)",
-      frontierModel: false,
       coding: 51.48,
-      blendedPrice: 1.6875,
-      inputPrice: 0.75,
-      outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
     });
 
@@ -387,11 +339,7 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual({
       slug: "model-b",
       model: "Model B",
-      frontierModel: false,
       coding: null,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
       intelligenceIndexOutputTokens: null,
     });
   });
@@ -400,38 +348,28 @@ describe("ArtificialAnalysisClient", () => {
     const html = buildHtmlWithModels([
       {
         slug: "model-new",
-        name: "Model with name field",
-        coding_index: 80,
-        price_1m_blended_3_to_1: 1.0,
+        shortName: "Model with shortName field",
+        codingIndex: 80,
       },
       {
         slug: "model-old",
-        model_name: "Model with model_name field",
-        coding_index: 70,
-        price_1m_blended_3_to_1: 2.0,
+        name: "Model with name field",
+        codingIndex: 70,
       },
     ]);
     const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual({
       slug: "model-new",
-      model: "Model with name field",
-      frontierModel: false,
+      model: "Model with shortName field",
       coding: 80,
-      blendedPrice: 1.0,
-      inputPrice: null,
-      outputPrice: null,
       intelligenceIndexOutputTokens: null,
     });
 
     expect(result).toContainEqual({
       slug: "model-old",
-      model: "Model with model_name field",
-      frontierModel: false,
+      model: "Model with name field",
       coding: 70,
-      blendedPrice: 2.0,
-      inputPrice: null,
-      outputPrice: null,
       intelligenceIndexOutputTokens: null,
     });
   });
@@ -454,11 +392,7 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "model-no-perf",
         model: "Model Without Performance Data",
-        frontierModel: false,
         coding: null,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: null,
       },
     ]);
@@ -486,10 +420,7 @@ describe("ArtificialAnalysisClient", () => {
             slug: "gpt-5-4-mini-duplicate",
             name: "GPT-5.4 mini Duplicate",
             shortName: "GPT-5.4 mini (xhigh)",
-            coding_index: 51.48,
-            price_1m_blended_3_to_1: 1.6875,
-            price_1m_input_tokens: 0.75,
-            price_1m_output_tokens: 4.5,
+            codingIndex: 51.48,
           },
         ],
       })}`,
@@ -501,90 +432,59 @@ describe("ArtificialAnalysisClient", () => {
 
     expect(result).toContainEqual({
       slug: "gpt-5-4-mini-duplicate",
-      model: "GPT-5.4 mini Duplicate",
-      frontierModel: false,
+      model: "GPT-5.4 mini (xhigh)",
       coding: 51.48,
-      blendedPrice: 1.6875,
-      inputPrice: 0.75,
-      outputPrice: 4.5,
       intelligenceIndexOutputTokens: null,
     });
   });
 
-  it("parses frontier_model from models array", async () => {
+  it("parses current camelCase fields from models array", async () => {
     const html = buildHtmlWithModels([
       {
-        slug: "frontier-model",
-        frontier_model: true,
-        short_name: "Frontier Model",
-        coding_index: 70,
-        price_1m_blended_3_to_1: 1.0,
+        slug: "current-model",
+        shortName: "Current Model",
+        codingIndex: 70,
       },
       {
-        slug: "non-frontier-model",
-        frontier_model: false,
-        short_name: "Non-Frontier Model",
-        coding_index: 65,
-        price_1m_blended_3_to_1: 0.5,
+        slug: "model-with-only-name",
+        name: "Model With Only Name",
       },
     ]);
     const result = await parseModelsFromHtml(html);
 
     expect(result).toContainEqual({
-      slug: "frontier-model",
-      model: "Frontier Model",
-      frontierModel: true,
+      slug: "current-model",
+      model: "Current Model",
       coding: 70,
-      blendedPrice: 1.0,
-      inputPrice: null,
-      outputPrice: null,
       intelligenceIndexOutputTokens: null,
     });
 
     expect(result).toContainEqual({
-      slug: "non-frontier-model",
-      model: "Non-Frontier Model",
-      frontierModel: false,
-      coding: 65,
-      blendedPrice: 0.5,
-      inputPrice: null,
-      outputPrice: null,
+      slug: "model-with-only-name",
+      model: "Model With Only Name",
+      coding: null,
       intelligenceIndexOutputTokens: null,
     });
-  });
-
-  it("defaults missing frontier_model to false", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "no-frontier-flag",
-        short_name: "No Frontier Flag",
-        coding_index: 70,
-        price_1m_blended_3_to_1: 1.0,
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result[0].frontierModel).toBe(false);
   });
 
   it("preserves explicit deprecated values and omits missing deprecated", async () => {
     const html = buildHtmlWithModels([
       {
         slug: "deprecated-model",
-        short_name: "Deprecated Model",
-        coding_index: 70,
+        shortName: "Deprecated Model",
+        codingIndex: 70,
         deprecated: true,
       },
       {
         slug: "active-model",
-        short_name: "Active Model",
-        coding_index: 65,
+        shortName: "Active Model",
+        codingIndex: 65,
         deprecated: false,
       },
       {
         slug: "unknown-lifecycle-model",
-        short_name: "Unknown Lifecycle Model",
-        coding_index: 60,
+        shortName: "Unknown Lifecycle Model",
+        codingIndex: 60,
       },
     ]);
 
@@ -604,7 +504,7 @@ describe("ArtificialAnalysisClient", () => {
     expect(unknownLifecycleModel).not.toHaveProperty("deprecated");
   });
 
-  it("merges frontier_model from performance data into metadata by slug", async () => {
+  it("merges current performance fields into metadata by slug", async () => {
     const metadataModels = [
       {
         slug: "gpt-5-4-mini",
@@ -615,9 +515,13 @@ describe("ArtificialAnalysisClient", () => {
     const performanceModels = [
       {
         slug: "gpt-5-4-mini",
-        frontier_model: true,
-        coding_index: 51.48,
-        price_1m_blended_3_to_1: 1.6875,
+        codingIndex: 51.48,
+        canonicalIntelligenceIndexTokenCount: {
+          output: 12345678,
+          input: 1000,
+          answer: 500,
+          reasoning: 200,
+        },
       },
     ];
 
@@ -627,12 +531,8 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual({
       slug: "gpt-5-4-mini",
       model: "GPT-5.4 mini (xhigh)",
-      frontierModel: true,
       coding: 51.48,
-      blendedPrice: 1.6875,
-      inputPrice: null,
-      outputPrice: null,
-      intelligenceIndexOutputTokens: null,
+      intelligenceIndexOutputTokens: 12345678,
     });
   });
 
@@ -647,7 +547,7 @@ describe("ArtificialAnalysisClient", () => {
     const performanceModels = [
       {
         slug: "deprecated-from-performance",
-        coding_index: 51.48,
+        codingIndex: 51.48,
         deprecated: true,
       },
     ];
@@ -671,7 +571,7 @@ describe("ArtificialAnalysisClient", () => {
           {
             slug: "model-identical",
             name: "Model Identical",
-            coding_index: 60,
+            codingIndex: 60,
           },
         ],
       })}`,
@@ -684,7 +584,7 @@ describe("ArtificialAnalysisClient", () => {
           {
             slug: "model-identical",
             name: "Model Identical",
-            coding_index: 60,
+            codingIndex: 60,
           },
         ],
       })}`,
@@ -699,11 +599,7 @@ describe("ArtificialAnalysisClient", () => {
     expect(result).toContainEqual({
       slug: "model-identical",
       model: "Model Identical",
-      frontierModel: false,
       coding: 60,
-      blendedPrice: null,
-      inputPrice: null,
-      outputPrice: null,
       intelligenceIndexOutputTokens: null,
     });
   });
@@ -741,9 +637,7 @@ describe("ArtificialAnalysisClient", () => {
           const freshHtml = buildHtmlWithModels([
             {
               slug: "fresh-no-coding",
-              frontier_model: false,
-              short_name: "Fresh No Coding",
-              price_1m_blended_3_to_1: 1.0,
+              shortName: "Fresh No Coding",
             },
           ]);
           mockHtmlResponse(fetchWithTimeout, freshHtml);
@@ -768,11 +662,7 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "cached-model",
         model: "Cached Model",
-        frontierModel: false,
         coding: 70,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: 25_000,
       },
     ];
@@ -786,11 +676,13 @@ describe("ArtificialAnalysisClient", () => {
     const html = buildHtmlWithModels([
       {
         slug: "should-not-be-fetched",
-        frontier_model: false,
-        short_name: "Should Not Be Fetched",
-        coding_index: 70,
-        intelligence_index_token_counts: {
-          output_tokens: 25_000,
+        shortName: "Should Not Be Fetched",
+        codingIndex: 70,
+        canonicalIntelligenceIndexTokenCount: {
+          output: 25_000,
+          input: 1000,
+          answer: 500,
+          reasoning: 200,
         },
       },
     ]);
@@ -820,11 +712,7 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "no-coding",
         model: "No Coding",
-        frontierModel: true,
         coding: null,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: 25_000,
       },
     ];
@@ -837,11 +725,7 @@ describe("ArtificialAnalysisClient", () => {
       {
         slug: "no-output-tokens",
         model: "No Output Tokens",
-        frontierModel: true,
         coding: 70,
-        blendedPrice: null,
-        inputPrice: null,
-        outputPrice: null,
         intelligenceIndexOutputTokens: null,
       },
     ];
@@ -877,15 +761,13 @@ describe("ArtificialAnalysisClient", () => {
       models: [
         {
           slug: "gpt-5-5-medium",
-          short_name: "GPT-5.5 (medium)",
-          frontier_model: true,
-          coding_index: 56.21,
+          shortName: "GPT-5.5 (medium)",
+          codingIndex: 56.21,
         },
         {
           slug: "gpt-5-5",
-          short_name: "GPT-5.5 (xhigh)",
-          frontier_model: true,
-          coding_index: 59.12,
+          shortName: "GPT-5.5 (xhigh)",
+          codingIndex: 59.12,
         },
       ],
     }).replace(/"/g, '\\"');
@@ -898,19 +780,18 @@ describe("ArtificialAnalysisClient", () => {
     expectGpt55PerformanceModels(result);
   });
 
-  it("treats missing frontier_model as not frontier after merge", async () => {
+  it("treats missing codingIndex as unparsed performance data after merge", async () => {
     const performanceData = [
       {
-        slug: "no-frontier-flag",
-        coding_index: 60,
+        slug: "no-coding-index",
       },
     ];
 
     const html = buildHtmlWithSeparateChunks(
       [
         {
-          slug: "no-frontier-flag",
-          short_name: "No Frontier Flag",
+          slug: "no-coding-index",
+          name: "No Coding Index",
         },
       ],
       performanceData,
@@ -919,151 +800,11 @@ describe("ArtificialAnalysisClient", () => {
 
     expect(result).toContainEqual(
       expect.objectContaining({
-        slug: "no-frontier-flag",
-        frontierModel: false,
-      }),
-    );
-  });
-
-  it("parses intelligence_index_token_counts.output_tokens from model objects", async () => {
-    const html = buildHtmlWithModels([
-      modelWithTokenCounts("model-with-tokens", 25000),
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-with-tokens",
-        intelligenceIndexOutputTokens: 25000,
-      }),
-    );
-  });
-
-  it("returns null for missing intelligence_index_token_counts", async () => {
-    const html = buildHtmlWithModels([modelWithTokenCounts("model-no-tokens")]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-no-tokens",
+        slug: "no-coding-index",
+        coding: null,
         intelligenceIndexOutputTokens: null,
       }),
     );
-  });
-
-  it.each([
-    ["model-invalid-tokens", Infinity],
-    ["model-zero-tokens", 0],
-    ["model-negative-tokens", -100],
-  ])("returns null for invalid output_tokens: %s", async (slug, tokens) => {
-    const html = buildHtmlWithModels([modelWithTokenCounts(slug, tokens)]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug,
-        intelligenceIndexOutputTokens: null,
-      }),
-    );
-  });
-
-  it("merges output token counts by slug from performance data", async () => {
-    const metadataModels = [
-      {
-        slug: "model-merge",
-        name: "Model Merge",
-      },
-    ];
-
-    const performanceModels = [
-      {
-        slug: "model-merge",
-        frontier_model: true,
-        coding_index: 51.48,
-        intelligence_index_token_counts: {
-          output_tokens: 18000,
-        },
-      },
-    ];
-
-    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-merge",
-        intelligenceIndexOutputTokens: 18000,
-      }),
-    );
-  });
-
-  it("merges output token counts from embedded performance data", async () => {
-    const html = buildHtmlWithEmbeddedPerformanceModels([
-      {
-        slug: "embedded-tokens",
-        short_name: "Embedded Tokens",
-        frontier_model: true,
-        coding_index: 59.12,
-        intelligence_index_token_counts: {
-          output_tokens: 30000,
-        },
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "embedded-tokens",
-        intelligenceIndexOutputTokens: 30000,
-      }),
-    );
-  });
-
-  it("does not expose release_date from raw payload", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-with-date",
-        short_name: "Model With Date",
-        coding_index: 70,
-        release_date: "2026-04-23",
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-with-date",
-      }),
-    );
-    expect(result[0]).not.toHaveProperty("releaseDate");
-  });
-
-  it("does not expose release_date from performance data", async () => {
-    const metadataModels = [
-      {
-        slug: "model-merge-date",
-        name: "Model Merge Date",
-      },
-    ];
-
-    const performanceModels = [
-      {
-        slug: "model-merge-date",
-        frontier_model: true,
-        coding_index: 51.48,
-        release_date: "2026-03-15",
-      },
-    ];
-
-    const html = buildHtmlWithSeparateChunks(metadataModels, performanceModels);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-merge-date",
-      }),
-    );
-    expect(result[0]).not.toHaveProperty("releaseDate");
   });
 
   it("parses canonicalIntelligenceIndexTokenCount.output from model objects", async () => {
@@ -1080,57 +821,6 @@ describe("ArtificialAnalysisClient", () => {
     );
   });
 
-  it("prefers canonicalIntelligenceIndexTokenCount.output over legacy field", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-both-fields",
-        short_name: "Model Both Fields",
-        frontier_model: true,
-        coding_index: 70,
-        intelligence_index_token_counts: {
-          output_tokens: 25000,
-        },
-        canonicalIntelligenceIndexTokenCount: {
-          output: 50000,
-          input: 1000,
-          answer: 500,
-          reasoning: 200,
-        },
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-both-fields",
-        intelligenceIndexOutputTokens: 50000,
-      }),
-    );
-  });
-
-  it("falls back to legacy field when canonical output is missing", async () => {
-    const html = buildHtmlWithModels([
-      {
-        slug: "model-canonical-missing",
-        short_name: "Model Canonical Missing",
-        frontier_model: true,
-        coding_index: 70,
-        intelligence_index_token_counts: {
-          output_tokens: 25000,
-        },
-        canonicalIntelligenceIndexTokenCount: {},
-      },
-    ]);
-    const result = await parseModelsFromHtml(html);
-
-    expect(result).toContainEqual(
-      expect.objectContaining({
-        slug: "model-canonical-missing",
-        intelligenceIndexOutputTokens: 25000,
-      }),
-    );
-  });
-
   it("merges canonical token counts by slug from performance data", async () => {
     const metadataModels = [
       {
@@ -1142,8 +832,7 @@ describe("ArtificialAnalysisClient", () => {
     const performanceModels = [
       {
         slug: "model-merge-canonical",
-        frontier_model: true,
-        coding_index: 51.48,
+        codingIndex: 51.48,
         canonicalIntelligenceIndexTokenCount: {
           output: 72301736,
           input: 364032098,
@@ -1162,5 +851,19 @@ describe("ArtificialAnalysisClient", () => {
         intelligenceIndexOutputTokens: 72301736,
       }),
     );
+  });
+
+  it("throws AiParseError when current payload contains no codingIndex signal", async () => {
+    const html = buildHtmlWithModels([
+      {
+        slug: "legacy-model",
+        short_name: "Legacy Model",
+        coding_index: 70,
+      },
+    ]);
+
+    await expect(parseModelsFromHtml(html)).rejects.toMatchObject({
+      name: "AiParseError",
+    });
   });
 });

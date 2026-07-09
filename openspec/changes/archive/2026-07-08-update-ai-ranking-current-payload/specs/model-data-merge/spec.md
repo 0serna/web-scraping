@@ -1,10 +1,4 @@
-# model-data-merge Specification
-
-## Purpose
-
-TBD - created by archiving change fix-model-deduplication. Update Purpose after archive.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Duplicate slugs use first-occurrence semantics
 

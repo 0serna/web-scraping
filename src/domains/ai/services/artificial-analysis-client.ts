@@ -18,7 +18,7 @@ const ARTIFICIAL_ANALYSIS_CACHE_KEY = "ai:models";
 const NEXT_FLIGHT_CHUNK_PATTERN =
   'self\\.__next_f\\.push\\(\\[\\s*\\d+\\s*,\\s*"((?:\\\\.|[^"\\\\])*)"';
 const MODELS_KEY_PATTERN = '"models"\\s*:\\s*\\[';
-const PERFORMANCE_DATA_PATTERN = '"coding_index"\\s*:';
+const CODING_INDEX_PATTERN = /"codingIndex"\s*:/;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -139,71 +139,37 @@ function resolveNumericField(value: unknown): number | null {
   return isFiniteNumber(value) ? value : null;
 }
 
-function isPositiveFiniteNumber(value: unknown): value is number {
-  return isFiniteNumber(value) && value > 0;
-}
-
-function resolveOutputTokens(raw: RawArtificialAnalysisModel): number | null {
-  // Prefer canonicalIntelligenceIndexTokenCount.output (current field)
-  const canonicalCounts = raw.canonicalIntelligenceIndexTokenCount;
-  if (canonicalCounts && typeof canonicalCounts === "object") {
-    const value = canonicalCounts.output;
-    if (isPositiveFiniteNumber(value)) return value;
-  }
-
-  // Fallback to legacy field for compatibility
-  const legacyCounts = raw.intelligence_index_token_counts;
-  if (legacyCounts && typeof legacyCounts === "object") {
-    const value = legacyCounts.output_tokens;
-    if (isPositiveFiniteNumber(value)) return value;
-  }
-
-  return null;
-}
-
-function resolveDeprecated(
-  raw: RawArtificialAnalysisModel,
-): boolean | undefined {
-  return typeof raw.deprecated === "boolean" ? raw.deprecated : undefined;
-}
-
-function resolveModelNameField(
-  rawModel: RawArtificialAnalysisModel,
-): string | null {
-  const name = rawModel.short_name ?? rawModel.model_name ?? rawModel.name;
-  return name?.trim() || null;
-}
-
-function resolveSlug(rawModel: RawArtificialAnalysisModel): string {
-  const slug = rawModel.slug;
-  if (typeof slug !== "string") return "";
-  return slug.trim();
-}
-
-function resolveFrontierModel(rawModel: RawArtificialAnalysisModel): boolean {
-  return rawModel.frontier_model === true;
-}
-
 function normalizeModel(
   rawModel: RawArtificialAnalysisModel,
 ): ArtificialAnalysisModel | null {
-  const model = resolveModelNameField(rawModel);
-  if (!model) return null;
-
-  const slug = resolveSlug(rawModel);
+  const rawSlug = rawModel.slug;
+  const slug = typeof rawSlug === "string" ? rawSlug.trim() : "";
   if (slug.length === 0) return null;
 
-  const deprecated = resolveDeprecated(rawModel);
+  const name = rawModel.shortName ?? rawModel.name;
+  const model = name?.trim() || null;
+  if (!model) return null;
+
+  const coding = resolveNumericField(rawModel.codingIndex);
+  const deprecated =
+    typeof rawModel.deprecated === "boolean" ? rawModel.deprecated : undefined;
+  const canonicalCounts = rawModel.canonicalIntelligenceIndexTokenCount;
+  const rawOutputTokens =
+    canonicalCounts && typeof canonicalCounts === "object"
+      ? canonicalCounts.output
+      : undefined;
+  const intelligenceIndexOutputTokens =
+    rawOutputTokens !== undefined &&
+    isFiniteNumber(rawOutputTokens) &&
+    rawOutputTokens > 0
+      ? rawOutputTokens
+      : null;
 
   return {
     slug,
     model,
-    frontierModel: resolveFrontierModel(rawModel),
-    coding: resolveNumericField(rawModel.coding_index),
-    blendedPrice: resolveNumericField(rawModel.price_1m_blended_3_to_1),
-    inputPrice: resolveNumericField(rawModel.price_1m_input_tokens),
-    outputPrice: resolveNumericField(rawModel.price_1m_output_tokens),
-    intelligenceIndexOutputTokens: resolveOutputTokens(rawModel),
+    coding,
+    intelligenceIndexOutputTokens,
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -269,22 +235,36 @@ function findObjectStart(source: string, fromIndex: number): number {
   return fromIndex;
 }
 
+function hasCodingIndexProperty(objectText: string): boolean {
+  return CODING_INDEX_PATTERN.test(objectText);
+}
+
 function toPerformanceData(
   raw: RawArtificialAnalysisModel,
 ): PerformanceData | null {
-  const slug = typeof raw.slug === "string" ? raw.slug.trim() : "";
+  const rawSlug = raw.slug;
+  const slug = typeof rawSlug === "string" ? rawSlug.trim() : "";
   if (slug.length === 0) return null;
 
-  const deprecated = resolveDeprecated(raw);
+  const coding = resolveNumericField(raw.codingIndex);
+  const deprecated =
+    typeof raw.deprecated === "boolean" ? raw.deprecated : undefined;
+  const canonicalCounts = raw.canonicalIntelligenceIndexTokenCount;
+  const rawOutputTokens =
+    canonicalCounts && typeof canonicalCounts === "object"
+      ? canonicalCounts.output
+      : undefined;
+  const intelligenceIndexOutputTokens =
+    rawOutputTokens !== undefined &&
+    isFiniteNumber(rawOutputTokens) &&
+    rawOutputTokens > 0
+      ? rawOutputTokens
+      : null;
 
   return {
     slug,
-    frontierModel: raw.frontier_model === true,
-    coding: resolveNumericField(raw.coding_index),
-    blendedPrice: resolveNumericField(raw.price_1m_blended_3_to_1),
-    inputPrice: resolveNumericField(raw.price_1m_input_tokens),
-    outputPrice: resolveNumericField(raw.price_1m_output_tokens),
-    intelligenceIndexOutputTokens: resolveOutputTokens(raw),
+    coding,
+    intelligenceIndexOutputTokens,
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }
@@ -309,6 +289,7 @@ function tryAddPerformanceEntry(
   const objectStartIndex = findObjectStart(decodedChunk, match.index);
   const objectText = extractJsonObjectText(decodedChunk, objectStartIndex);
   if (!objectText) return false;
+  if (!hasCodingIndexProperty(objectText)) return false;
 
   const parsed = parseRawModel(objectText);
   if (!parsed) return false;
@@ -325,7 +306,7 @@ function extractPerformanceDataFromChunk(
   decodedChunk: string,
 ): PerformanceData[] {
   const models: PerformanceData[] = [];
-  const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
+  const performanceRegex = new RegExp(CODING_INDEX_PATTERN, "g");
 
   let match = performanceRegex.exec(decodedChunk);
   while (match !== null) {
@@ -344,6 +325,7 @@ function tryAddModelEntry(
   const objectStartIndex = findObjectStart(source, match.index);
   const objectText = extractJsonObjectText(source, objectStartIndex);
   if (!objectText) return false;
+  if (!hasCodingIndexProperty(objectText)) return false;
 
   const parsed = parseRawModel(objectText);
   if (!parsed) return false;
@@ -360,7 +342,7 @@ function extractModelsFromPerformanceObjects(
   source: string,
 ): ArtificialAnalysisModel[] {
   const models: ArtificialAnalysisModel[] = [];
-  const performanceRegex = new RegExp(PERFORMANCE_DATA_PATTERN, "g");
+  const performanceRegex = new RegExp(CODING_INDEX_PATTERN, "g");
 
   let match = performanceRegex.exec(source);
   while (match !== null) {
@@ -394,29 +376,18 @@ function uniqueModelsBySlug(
   return uniqueModels;
 }
 
-type PerformanceFields = Omit<PerformanceData, "slug">;
-
-function mergeNullableField<T>(source: T | null, fallback: T | null): T | null {
-  return source ?? fallback;
-}
-
 function mergePerformanceFields<T extends ArtificialAnalysisModel>(
   model: T,
-  source: PerformanceFields,
+  source: PerformanceData,
 ): T {
   const deprecated = source.deprecated ?? model.deprecated;
 
   return {
     ...model,
-    frontierModel: source.frontierModel,
-    coding: mergeNullableField(source.coding, model.coding),
-    blendedPrice: mergeNullableField(source.blendedPrice, model.blendedPrice),
-    inputPrice: mergeNullableField(source.inputPrice, model.inputPrice),
-    outputPrice: mergeNullableField(source.outputPrice, model.outputPrice),
-    intelligenceIndexOutputTokens: mergeNullableField(
-      source.intelligenceIndexOutputTokens,
+    coding: source.coding ?? model.coding,
+    intelligenceIndexOutputTokens:
+      source.intelligenceIndexOutputTokens ??
       model.intelligenceIndexOutputTokens,
-    ),
     ...(deprecated !== undefined ? { deprecated } : {}),
   };
 }

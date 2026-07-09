@@ -6,9 +6,28 @@ Fetch and rank AI models from Artificial Analysis performance data, returning an
 
 ## Requirements
 
+### Requirement: Normalize current Artificial Analysis payload
+
+The system SHALL normalize Artificial Analysis model data from the current camelCase payload fields used by the ranking domain.
+
+#### Scenario: Current model name and coding fields normalized
+
+- **WHEN** a raw Artificial Analysis model object contains `slug`, `shortName`, and a finite `codingIndex`
+- **THEN** the normalized model SHALL expose the trimmed slug, `shortName` as the public model name, and `codingIndex` as the coding score
+
+#### Scenario: Current token count field normalized
+
+- **WHEN** a raw Artificial Analysis model object contains `canonicalIntelligenceIndexTokenCount.output` with a positive finite number
+- **THEN** the normalized model SHALL expose that value as the intelligence index output-token count
+
+#### Scenario: Missing current coding signal fails with diagnostic parse error
+
+- **WHEN** extracted Artificial Analysis payload data contains no `codingIndex` entries
+- **THEN** the system SHALL fail parsing with an `AiParseError` that identifies the missing current ranking signal
+
 ### Requirement: Rank models with valid coding scores
 
-The system SHALL include models that have valid coding scores and are not explicitly marked as deprecated when calculating the AI model ranking. Agentic scores and reasoning status SHALL NOT affect eligibility.
+The system SHALL include models that have valid coding scores and are not explicitly marked as deprecated when calculating the AI model ranking. Agentic scores, reasoning status, frontier metadata, and price metadata SHALL NOT be ranking-domain inputs.
 
 #### Scenario: All models with valid coding are eligible
 

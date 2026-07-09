@@ -8,11 +8,11 @@ Rank AI models by their coding score, using output-token count and model name as
 
 ### Requirement: Rank models with coding scores only
 
-The system SHALL include models that have a valid coding score and are not explicitly marked as deprecated when calculating the AI model ranking.
+The system SHALL include models that have a valid coding score and are not explicitly marked as deprecated when calculating the AI model ranking. Frontier metadata, price metadata, agentic scores, and reasoning status SHALL NOT be ranking-domain inputs.
 
 #### Scenario: All models with valid coding are eligible
 
-- **WHEN** Artificial Analysis returns models with coding scores, regardless of other fields
+- **WHEN** Artificial Analysis returns models with coding scores, regardless of other source metadata
 - **THEN** the system SHALL calculate sorting and ranking positions using all models that have valid coding scores and are not deprecated
 
 #### Scenario: Model without coding score excluded
