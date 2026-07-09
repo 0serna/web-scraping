@@ -29,13 +29,15 @@ run_tool eslint eslint . --format json
 ESLINT_EXIT=$?
 run_tool tsc tsc --noEmit
 TSC_EXIT=$?
+run_tool vitest vitest run --reporter=json
+VITEST_EXIT=$?
 run_tool openspec openspec validate --all --json
 OPENSPEC_EXIT=$?
 
 echo "---CHECK:SUMMARY---"
 echo "eslint: $(status $ESLINT_EXIT)"
 echo "tsc: $(status $TSC_EXIT)"
+echo "vitest: $(status $VITEST_EXIT)"
 echo "openspec: $(status $OPENSPEC_EXIT)"
-echo "---CHECK:DONE---"
 
-exit $((ESLINT_EXIT || TSC_EXIT || OPENSPEC_EXIT))
+exit $((ESLINT_EXIT || TSC_EXIT || VITEST_EXIT || OPENSPEC_EXIT))

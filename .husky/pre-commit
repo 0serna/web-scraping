@@ -1,1 +1,7 @@
-npx lint-staged && npm run check
+LINT_STAGED_EXIT=0
+npm exec lint-staged || LINT_STAGED_EXIT=$?
+
+CHECK_EXIT=0
+npm run check || CHECK_EXIT=$?
+
+exit $((LINT_STAGED_EXIT || CHECK_EXIT))

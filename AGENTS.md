@@ -2,29 +2,41 @@
 
 ```text
 .
-├── src/                      # application source (TypeScript)
-│   ├── domains/
-│   │   ├── ai/               # AI scraping domain
-│   │   ├── bvc/              # BVC scraping domain
-│   │   └── game/             # game scraping domain
-│   ├── shared/
-│   │   ├── config/           # shared runtime config
-│   │   ├── test-utils/       # test helpers and mocks
-│   │   ├── types/            # shared TypeScript types
-│   │   └── utils/            # shared utilities
-│   └── index.ts              # app entry point
-├── openspec/                 # change proposals and specs
-└── scripts/                  # automation scripts
+├── openspec/                 # OpenSpec changes and specs
+│   ├── changes/
+│   └── specs/
+├── scripts/                  # local automation
+└── src/                      # application source
+    ├── domains/              # scraping domains
+    │   ├── ai/
+    │   ├── bvc/
+    │   └── game/
+    └── shared/               # shared runtime and test utilities
+        ├── config/
+        ├── test-utils/
+        ├── types/
+        └── utils/
 ```
+
+## Repository Stack
+
+- Language: TypeScript
+- Runtime: Node.js 22+
+- Package manager: npm
+- Framework/platform: Fastify
+- Test framework: Vitest
+- Build tool: TypeScript compiler
+- Quality tools: ESLint, Prettier, OpenSpec
+- Database/cache: Upstash Redis
+- Infrastructure: Docker, Google Cloud Build
+- Deployment target: Google Cloud Run
 
 ## Repository Commands
 
 - `npm install`: install dependencies.
 - `npm run dev`: run dev server with file watching.
 - `npm run build`: compile TypeScript to dist/.
-- `npm run format`: format all files with Prettier.
-- `npm run check`: run lint, typecheck, and OpenSpec validation.
-- `npm test`: run test suite with Vitest.
+- `npm run check`: run lint, typecheck, tests, and OpenSpec validation.
 
 ## Cloud Run Debug
 

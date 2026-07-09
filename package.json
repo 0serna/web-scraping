@@ -7,8 +7,6 @@
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
     "check": "bash scripts/check.sh",
-    "format": "prettier --write .",
-    "test": "vitest run",
     "prepare": "husky"
   },
   "license": "MIT",
