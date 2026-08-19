@@ -36,9 +36,10 @@ describe("TriiClient", () => {
     const { TriiClient, fetchWithTimeout, getOrFetchValidated } =
       await loadTriiClient();
     fetchWithTimeout.mockResolvedValue(
-      new Response('<h3>ecopetrol</h3><div class="title">$ 1,234.56</div>', {
-        status: 200,
-      }),
+      new Response(
+        '<h3>ECOPETROL</h3><span class="price-symbol">$</span><span class="price-value">1,234.56</span>',
+        { status: 200 },
+      ),
     );
 
     const client = new TriiClient({ child: vi.fn() } as never);
@@ -53,6 +54,33 @@ describe("TriiClient", () => {
       expect.any(Function),
       expect.any(Function),
     );
+  });
+
+  it("parses MGC ticker from current Trii card markup", async () => {
+    const { TriiClient, fetchWithTimeout } = await loadTriiClient();
+    fetchWithTimeout.mockResolvedValue(
+      new Response(
+        `<li class="stock-item">
+          <div class="card_stock">
+            <h2>iShares MSCI ACWI</h2>
+            <h3>ISACCO</h3>
+            <div class="stock-price">
+              <span class="price-symbol">$</span>
+              <span class="price-value">380720.0</span>
+            </div>
+          </div>
+        </li>`,
+        { status: 200 },
+      ),
+    );
+
+    const client = new TriiClient({ child: vi.fn() } as never);
+
+    await expect(client.getPriceByTicker("ISACCO")).resolves.toEqual({
+      ticker: "ISACCO",
+      price: 380720,
+      source: "trii",
+    });
   });
 
   it("throws BvcFetchError when html request fails", async () => {
@@ -84,9 +112,12 @@ describe("TriiClient", () => {
   it("returns null when ticker is not present in parsed map", async () => {
     const { TriiClient, fetchWithTimeout } = await loadTriiClient();
     fetchWithTimeout.mockResolvedValue(
-      new Response('<h3>pfgrupsura</h3><div class="title">$ 12,000</div>', {
-        status: 200,
-      }),
+      new Response(
+        '<h3>PFGRUPSURA</h3><span class="price-value">12,000</span>',
+        {
+          status: 200,
+        },
+      ),
     );
 
     const client = new TriiClient({ child: vi.fn() } as never);
@@ -101,9 +132,12 @@ describe("TriiClient", () => {
       async (_key, fetcher, validator) => {
         if (!validator(staleMap)) {
           fetchWithTimeout.mockResolvedValue(
-            new Response('<h3>ecopetrol</h3><div class="title">$ 1,500</div>', {
-              status: 200,
-            }),
+            new Response(
+              '<h3>ECOPETROL</h3><span class="price-value">1,500</span>',
+              {
+                status: 200,
+              },
+            ),
           );
           return fetcher();
         }

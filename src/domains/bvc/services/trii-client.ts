@@ -65,7 +65,7 @@ function parseTriiStockListHtml(html: string): TriiPriceMap {
   const sections = html.match(sectionRegex) ?? [html];
 
   const cardRegex =
-    /<h3>\s*([^<\s]+)\s*<\/h3>[\s\S]*?<div\s+class="title">\s*\$\s*([^<]+?)\s*<\/div>/g;
+    /<h3>\s*([^<\s]+)\s*<\/h3>[\s\S]*?<span\s+class="price-value">\s*([^<]+?)\s*<\/span>/g;
 
   for (const sectionHtml of sections) {
     addTickerPriceToMap(map, sectionHtml, cardRegex);
