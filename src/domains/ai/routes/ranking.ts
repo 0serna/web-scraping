@@ -1,6 +1,6 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { sendError } from "../../../shared/utils/api-helpers.js";
-import { ModelRankingService } from "../services/model-ranking-service.js";
+import type { ModelRankingService } from "../services/model-ranking-service.js";
 
 interface RankingRoutesOptions {
   modelRankingService: ModelRankingService;

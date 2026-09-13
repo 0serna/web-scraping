@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import { GameInfo } from "../types/game.js";
+import type { GameInfo } from "../types/game.js";
 import { createSteamUnifiedApiClient } from "./steam-unified-api-client.js";
 
 export class GameInfoService {

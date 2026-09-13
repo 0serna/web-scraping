@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockServiceModuleDependencies } from "../../../shared/test-utils/service-test-helpers.js";
-import { matchDeepSweScore } from "./deepswe-client.js";
 import type { DeepSweScore } from "../types/ranking.js";
+import { matchDeepSweScore } from "./deepswe-client.js";
 
 describe("matchDeepSweScore", () => {
   const scores: DeepSweScore[] = [

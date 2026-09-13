@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { rankingRoutes } from "./routes/ranking.js";
 import { ArtificialAnalysisClient } from "./services/artificial-analysis-client.js";
 import { DeepSweClient } from "./services/deepswe-client.js";

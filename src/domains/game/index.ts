@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { infoRoutes } from "./routes/info.js";
 import { createGameInfoService } from "./services/game-info-service.js";
 

@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "build": "tsc",
-    "check": "bash scripts/check.sh",
+    "check": "biome ci --error-on-warnings .",
+    "check:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run",
     "prepare": "husky"
   },
   "license": "MIT",
@@ -16,29 +19,19 @@
     "p-limit": "^7.2.0"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@biomejs/biome": "2.5.13",
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^4.1.10",
-    "eslint": "^10.2.1",
-    "eslint-config-prettier": "^10.0.1",
-    "globals": "^17.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.8.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.59.1",
     "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "lint-staged": {
-    "*": [
-      "prettier --write --ignore-unknown"
-    ],
-    "*.{js,jsx,ts,tsx,mjs,cjs}": [
-      "eslint --fix"
-    ]
+    "*.{js,jsx,ts,tsx,json,jsonc}": "biome check --write --no-errors-on-unmatched"
   }
 }

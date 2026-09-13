@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiHelpersMocks,
-  expectJsonFetchWithRateLimit,
   createPassthroughRateLimiterMock,
+  expectJsonFetchWithRateLimit,
 } from "../../../shared/test-utils/service-test-helpers.js";
 
 async function loadSteamDetailsApiClient() {
@@ -23,8 +23,9 @@ async function loadSteamDetailsApiClient() {
     createRateLimiter,
   }));
 
-  const { SteamDetailsApiClient } =
-    await import("./steam-details-api-client.js");
+  const { SteamDetailsApiClient } = await import(
+    "./steam-details-api-client.js"
+  );
 
   return {
     SteamDetailsApiClient,

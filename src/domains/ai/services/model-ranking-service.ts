@@ -1,11 +1,11 @@
 import { AiParseError } from "../types/errors.js";
 import type {
   ArtificialAnalysisModel,
-  RankedModel,
   DeepSweScore,
+  RankedModel,
 } from "../types/ranking.js";
-import { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
-import { DeepSweClient, matchDeepSweScore } from "./deepswe-client.js";
+import type { ArtificialAnalysisClient } from "./artificial-analysis-client.js";
+import { type DeepSweClient, matchDeepSweScore } from "./deepswe-client.js";
 
 export const EXCLUDED_SLUG_PREFIXES: readonly string[] = [
   "claude",

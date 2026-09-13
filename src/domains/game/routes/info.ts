@@ -1,6 +1,6 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { sendError } from "../../../shared/utils/api-helpers.js";
-import { GameInfoService } from "../services/game-info-service.js";
+import type { GameInfoService } from "../services/game-info-service.js";
 import { extractAppId } from "../services/steam-url-parser.js";
 
 interface InfoQueryString {

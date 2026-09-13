@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createApiHelpersMocks,
-  expectJsonFetchWithRateLimit,
   createPassthroughRateLimiterMock,
+  expectJsonFetchWithRateLimit,
 } from "../../../shared/test-utils/service-test-helpers.js";
 
 interface LoadOptions {
@@ -44,8 +44,9 @@ async function loadSteamReviewsApiClient(options: LoadOptions = {}) {
     handleSteamError,
   }));
 
-  const { SteamReviewsApiClient } =
-    await import("./steam-reviews-api-client.js");
+  const { SteamReviewsApiClient } = await import(
+    "./steam-reviews-api-client.js"
+  );
 
   return {
     SteamReviewsApiClient,

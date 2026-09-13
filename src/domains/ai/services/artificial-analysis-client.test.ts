@@ -68,8 +68,9 @@ async function loadArtificialAnalysisClient(
     getOrFetchValidatedImpl,
   );
 
-  const { ArtificialAnalysisClient } =
-    await import("./artificial-analysis-client.js");
+  const { ArtificialAnalysisClient } = await import(
+    "./artificial-analysis-client.js"
+  );
 
   return {
     ArtificialAnalysisClient,
@@ -98,7 +99,9 @@ function mockHtmlResponse(
 }
 
 async function getModelsFromClient(
-  ArtificialAnalysisClient: new (logger: never) => {
+  ArtificialAnalysisClient: new (
+    logger: never,
+  ) => {
     getModels: () => Promise<ArtificialAnalysisModel[]>;
   },
 ) {
@@ -731,7 +734,7 @@ describe("ArtificialAnalysisClient", () => {
     ];
 
     const { ArtificialAnalysisClient } = await loadArtificialAnalysisClient(
-      async (_key, fetcher, validator) => {
+      async (_key, _fetcher, validator) => {
         if (validator(staleModels)) return staleModels;
         throw new Error("should not refetch");
       },

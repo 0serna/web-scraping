@@ -1,6 +1,6 @@
 import {
-  type RateLimiter,
   createRateLimiter,
+  type RateLimiter,
 } from "../../../shared/utils/global-rate-limiter.js";
 import { SteamParseError } from "../types/errors.js";
 import { fetchSteamJson } from "./steam-api-client-helpers.js";

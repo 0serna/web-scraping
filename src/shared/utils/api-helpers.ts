@@ -1,6 +1,6 @@
-import { FastifyReply } from "fastify";
+import type { FastifyReply } from "fastify";
 import { USER_AGENT } from "../config/index.js";
-import { ApiError } from "../types/api.js";
+import type { ApiError } from "../types/api.js";
 
 export type HeaderInput =
   | Record<string, string>

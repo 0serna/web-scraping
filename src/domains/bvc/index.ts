@@ -1,4 +1,4 @@
-import { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
 import { tickerRoutes } from "./routes/ticker.js";
 import { TradingViewClient } from "./services/tradingview-client.js";
 import { TriiClient } from "./services/trii-client.js";

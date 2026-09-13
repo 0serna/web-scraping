@@ -10,11 +10,10 @@ Fastify service (Node 22, TypeScript) that scrapes and normalizes data from thre
 | BVC ticker     | `src/domains/bvc/`              | Colombian exchange ticker via Trii and TradingView; `GET /bvc/ticker/:ticker` |
 | Steam game     | `src/domains/game/`             | Game details and reviews from a Steam URL; `GET /game/info?url=`              |
 | Shared runtime | `src/shared/`                   | Config, API-key auth, Upstash cache factory, API helpers, test utils          |
-| Specs          | `openspec/`                     | Current requirements in `specs/` plus archived change proposals               |
-| Quality gate   | `scripts/check.sh`              | ESLint, `tsc`, Vitest, OpenSpec validation (`npm run check`)                  |
+| Quality gate   | `biome.json`, `package.json`    | Biome, TypeScript, Vitest, and production build targets                       |
 | Deploy         | `Dockerfile`, `cloudbuild.yaml` | Distroless image → Artifact Registry → Cloud Run                              |
 
-Most of the TypeScript and nearly all OpenSpec history sit in the AI ranking pipeline (payload parsing, coding-only ranking, filters). BVC and game follow the same route → service → types shape with thinner clients.
+Most of the TypeScript sits in the AI ranking pipeline (payload parsing, coding-only ranking, filters). BVC and game follow the same route → service → types shape with thinner clients.
 
 ## Layout
 
@@ -27,10 +26,7 @@ Most of the TypeScript and nearly all OpenSpec history sit in the AI ranking pip
 │   │   ├── bvc/              # Trii + TradingView ticker
 │   │   └── game/             # Steam details/reviews
 │   └── shared/               # config, cache, auth, helpers, test-utils
-├── openspec/
-│   ├── specs/                # current requirements
-│   └── changes/              # proposals (mostly archived)
-├── scripts/check.sh          # npm run check
+├── biome.json               # formatting, linting, import ordering
 ├── Dockerfile                # multi-stage → distroless nodejs22
 └── cloudbuild.yaml           # build, push, Cloud Run deploy
 ```
@@ -41,7 +37,10 @@ Most of the TypeScript and nearly all OpenSpec history sit in the AI ranking pip
 cp .env.example .env   # set API_KEY; Upstash vars optional if CACHE_DISABLED=true
 npm install
 npm run dev            # http://0.0.0.0:3000
-npm run check          # lint, typecheck, tests, openspec
+npm run check          # Biome verification
+npm run typecheck      # source and test type checking
+npm test               # test suite
+npm run build          # production compilation
 ```
 
 Without `API_KEY`, startup fails closed unless `AUTH_DISABLED=true`. Pass the key as `x-api-key` or the `apikey` query param.
