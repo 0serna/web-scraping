@@ -1,19 +1,16 @@
 # web-scraping
 
-Fastify service (Node 22, TypeScript) that scrapes and normalizes data from three sources behind API-key auth. Domains register as plugins from `src/index.ts`. Caches responses in Upstash Redis when configured.
+Fastify service (Node 22, TypeScript) that scrapes and normalizes data behind API-key auth. Domains register as plugins from `src/index.ts`. Caches responses in Upstash Redis when configured.
 
 ## Areas
 
 | Area           | Path                            | Role                                                                          |
 | -------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| AI ranking     | `src/domains/ai/`               | Ranks models from Artificial Analysis (+ DeepSWE); `GET /ai/ranking`          |
 | BVC ticker     | `src/domains/bvc/`              | Colombian exchange ticker via Trii and TradingView; `GET /bvc/ticker/:ticker` |
 | Steam game     | `src/domains/game/`             | Game details and reviews from a Steam URL; `GET /game/info?url=`              |
 | Shared runtime | `src/shared/`                   | Config, API-key auth, Upstash cache factory, API helpers, test utils          |
 | Quality gate   | `biome.json`, `package.json`    | Biome, TypeScript, Vitest, and production build targets                       |
 | Deploy         | `Dockerfile`, `cloudbuild.yaml` | Distroless image → Artifact Registry → Cloud Run                              |
-
-Most of the TypeScript sits in the AI ranking pipeline (payload parsing, coding-only ranking, filters). BVC and game follow the same route → service → types shape with thinner clients.
 
 ## Layout
 
@@ -22,7 +19,6 @@ Most of the TypeScript sits in the AI ranking pipeline (payload parsing, coding-
 ├── src/
 │   ├── index.ts              # Fastify entry, auth hook, domain registration
 │   ├── domains/
-│   │   ├── ai/               # Artificial Analysis + DeepSWE ranking
 │   │   ├── bvc/              # Trii + TradingView ticker
 │   │   └── game/             # Steam details/reviews
 │   └── shared/               # config, cache, auth, helpers, test-utils

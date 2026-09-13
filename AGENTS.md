@@ -2,10 +2,9 @@
 
 ```text
 .
-├── scripts/                  # local automation
+├── scripts/                  # Artifact Registry cleanup policy
 └── src/                      # application source
     ├── domains/              # scraping domains
-    │   ├── ai/
     │   ├── bvc/
     │   └── game/
     └── shared/               # shared runtime and test utilities
