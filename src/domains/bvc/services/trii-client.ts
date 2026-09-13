@@ -1,9 +1,9 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { Cache } from "../../../shared/types/cache.js";
 import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
-import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";
@@ -47,12 +47,13 @@ function addTickerPriceToMap(
   sectionHtml: string,
   cardRegex: RegExp,
 ): void {
-  let match: RegExpExecArray | null;
-  while ((match = cardRegex.exec(sectionHtml)) !== null) {
+  let match = cardRegex.exec(sectionHtml);
+  while (match !== null) {
     const { ticker, price } = parseTickerAndPrice(match);
     if (ticker && price !== null) {
       map[ticker] = price;
     }
+    match = cardRegex.exec(sectionHtml);
   }
 }
 

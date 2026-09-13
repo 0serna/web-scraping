@@ -79,8 +79,9 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
     SteamReviewsApiClient: SteamReviewsApiClientMock,
   }));
 
-  const { createSteamUnifiedApiClient } =
-    await import("./steam-unified-api-client.js");
+  const { createSteamUnifiedApiClient } = await import(
+    "./steam-unified-api-client.js"
+  );
 
   return {
     createSteamUnifiedApiClient,

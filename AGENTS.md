@@ -2,9 +2,6 @@
 
 ```text
 .
-├── openspec/                 # OpenSpec changes and specs
-│   ├── changes/
-│   └── specs/
 ├── scripts/                  # local automation
 └── src/                      # application source
     ├── domains/              # scraping domains
@@ -18,6 +15,16 @@
         └── utils/
 ```
 
+## Repository Commands
+
+- `npm install`: install dependencies.
+- `npm run dev`: run the development server with file watching.
+- `npm run build`: compile production TypeScript to `dist/`.
+- `npm run check`: verify formatting, lint rules, and import order with Biome.
+- `npm run check:fix`: apply safe Biome fixes.
+- `npm run typecheck`: type-check source and test files without emitting output.
+- `npm test`: run the test suite once.
+
 ## Repository Stack
 
 - Language: TypeScript
@@ -26,17 +33,10 @@
 - Framework/platform: Fastify
 - Test framework: Vitest
 - Build tool: TypeScript compiler
-- Quality tools: ESLint, Prettier, OpenSpec
+- Quality tool: Biome
 - Database/cache: Upstash Redis
-- Infrastructure: Docker, Google Cloud Build
+- Infrastructure: Docker, GitHub Actions, Google Cloud Build
 - Deployment target: Google Cloud Run
-
-## Repository Commands
-
-- `npm install`: install dependencies.
-- `npm run dev`: run dev server with file watching.
-- `npm run build`: compile TypeScript to dist/.
-- `npm run check`: run lint, typecheck, tests, and OpenSpec validation.
 
 ## Cloud Run Debug
 

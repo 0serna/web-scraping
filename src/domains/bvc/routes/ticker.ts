@@ -1,9 +1,9 @@
-import { FastifyBaseLogger, FastifyPluginAsync } from "fastify";
+import type { FastifyBaseLogger, FastifyPluginAsync } from "fastify";
 import { sendError } from "../../../shared/utils/api-helpers.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
-import { TradingViewClient } from "../services/tradingview-client.js";
-import { TriiClient } from "../services/trii-client.js";
-import { TickerData } from "../types/ticker.js";
+import type { TradingViewClient } from "../services/tradingview-client.js";
+import type { TriiClient } from "../services/trii-client.js";
+import type { TickerData } from "../types/ticker.js";
 
 interface TickerParams {
   ticker: string;

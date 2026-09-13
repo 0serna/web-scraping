@@ -323,8 +323,8 @@ describe("UpstashCache", () => {
     );
     const fetcher = vi.fn().mockResolvedValue({ name: "Game", score: 95 });
     const validator = vi.fn((data: { name: string | null; score: number }) => {
-      if (data.name!.trim().length > 0) return true;
-      return false;
+      if (data.name === null) throw new Error("missing name");
+      return data.name.trim().length > 0;
     });
 
     await expect(

@@ -1,9 +1,9 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { Cache } from "../../../shared/types/cache.js";
 import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
-import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import type { DeepSweRow, DeepSweScore } from "../types/ranking.js";
 

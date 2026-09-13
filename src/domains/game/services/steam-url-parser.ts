@@ -4,7 +4,7 @@ function isNumericString(value: string): boolean {
 
 function extractAppIdFromPattern(url: string): string | null {
   const match = url.match(/\/app\/(\d+)/);
-  if (match && match[1]) {
+  if (match?.[1]) {
     return match[1];
   }
   return null;

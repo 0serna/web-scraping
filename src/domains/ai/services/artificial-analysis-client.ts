@@ -1,15 +1,15 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { Cache } from "../../../shared/types/cache.js";
 import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
-import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { AiFetchError, AiParseError } from "../types/errors.js";
-import {
-  type ArtificialAnalysisModel,
-  type PerformanceData,
-  type RawArtificialAnalysisModel,
+import type {
+  ArtificialAnalysisModel,
+  PerformanceData,
+  RawArtificialAnalysisModel,
 } from "../types/ranking.js";
 
 const ARTIFICIAL_ANALYSIS_URL = "https://artificialanalysis.ai/models/gpt-5-5";

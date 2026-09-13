@@ -1,9 +1,9 @@
 import type { FastifyBaseLogger } from "fastify";
+import type { Cache } from "../../../shared/types/cache.js";
 import {
   buildFetchHeaders,
   fetchWithTimeout,
 } from "../../../shared/utils/api-helpers.js";
-import type { Cache } from "../../../shared/types/cache.js";
 import { createCache } from "../../../shared/utils/cache-factory.js";
 import { normalizeTicker } from "../../../shared/utils/string-helpers.js";
 import { BvcFetchError, BvcParseError } from "../types/errors.js";

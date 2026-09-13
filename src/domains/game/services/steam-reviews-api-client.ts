@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import {
-  type RateLimiter,
   createRateLimiter,
+  type RateLimiter,
 } from "../../../shared/utils/global-rate-limiter.js";
 import { SteamFetchError, SteamParseError } from "../types/errors.js";
 import { handleSteamError } from "../utils/steam-error-handler.js";
