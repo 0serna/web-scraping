@@ -57,6 +57,12 @@ describe("infoRoutes", () => {
         name: "Dead Space 2",
         score: 91.4,
         source: "steam",
+        protonDb: {
+          tier: "platinum",
+          score: 0.8,
+          confidence: "strong",
+          reports: 85,
+        },
       }),
     };
 
@@ -72,6 +78,12 @@ describe("infoRoutes", () => {
       name: "Dead Space 2",
       score: 91.4,
       source: "steam",
+      protonDb: {
+        tier: "platinum",
+        score: 0.8,
+        confidence: "strong",
+        reports: 85,
+      },
     });
     expect(gameInfoService.getGameInfoByAppId).toHaveBeenCalledWith("47780");
   });
