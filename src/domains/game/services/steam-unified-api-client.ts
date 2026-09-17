@@ -10,6 +10,7 @@ interface GameData {
   name: string;
   score: number;
   releaseYear?: number;
+  fullGameAppId?: string;
 }
 
 function hasValidGameData(data: GameData): boolean {
@@ -31,7 +32,7 @@ class SteamUnifiedApiClient {
   }
 
   async getGameData(appId: string): Promise<GameData> {
-    const cacheKey = `steam:${appId}`;
+    const cacheKey = `steam:v2:${appId}`;
 
     return this.steamGameDataCache.getOrFetchValidated(
       cacheKey,
@@ -53,6 +54,9 @@ class SteamUnifiedApiClient {
           name: gameDetails.name,
           score: score.score,
           releaseYear: gameDetails.releaseYear,
+          ...(gameDetails.fullGameAppId
+            ? { fullGameAppId: gameDetails.fullGameAppId }
+            : {}),
         };
       },
       hasValidGameData,

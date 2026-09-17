@@ -13,10 +13,10 @@ export class GameInfoService {
   }
 
   async getGameInfoByAppId(appId: string): Promise<GameInfo> {
-    const [gameData, protonDb] = await Promise.all([
-      this.steamUnifiedApiClient.getGameData(appId),
-      this.protonDbApiClient.getSummaryByAppId(appId),
-    ]);
+    const gameData = await this.steamUnifiedApiClient.getGameData(appId);
+    const protonDb = await this.protonDbApiClient.getSummaryByAppId(
+      gameData.fullGameAppId ?? appId,
+    );
 
     return {
       score: gameData.score,

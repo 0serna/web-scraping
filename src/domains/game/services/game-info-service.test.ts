@@ -75,6 +75,39 @@ describe("GameInfoService", () => {
     expect(getSummaryByAppId).toHaveBeenCalledWith("47780");
   });
 
+  it("uses the Steam base-game app id for ProtonDB and preserves product fields", async () => {
+    const { GameInfoService, getGameData, getSummaryByAppId } =
+      await loadGameInfoService();
+    getGameData.mockResolvedValue({
+      name: "The Witcher 3: Wild Hunt - Blood and Wine",
+      score: 74.2,
+      releaseYear: 2016,
+      fullGameAppId: "292030",
+    });
+    getSummaryByAppId.mockResolvedValue({
+      tier: "platinum",
+      score: 0.87,
+      confidence: "strong",
+      reports: 1746,
+    });
+
+    const service = new GameInfoService({ warn: vi.fn() } as never);
+
+    await expect(service.getGameInfoByAppId("378648")).resolves.toEqual({
+      name: "The Witcher 3: Wild Hunt - Blood and Wine",
+      score: 74.2,
+      source: "steam",
+      releaseYear: 2016,
+      protonDb: {
+        tier: "platinum",
+        score: 0.87,
+        confidence: "strong",
+        reports: 1746,
+      },
+    });
+    expect(getSummaryByAppId).toHaveBeenCalledWith("292030");
+  });
+
   it("preserves Steam failures", async () => {
     const { GameInfoService, getGameData } = await loadGameInfoService();
     getGameData.mockRejectedValue(new Error("steam unavailable"));
