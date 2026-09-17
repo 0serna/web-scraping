@@ -13,6 +13,9 @@ interface SteamAppDetailsResponse {
       release_date?: {
         date?: string;
       };
+      fullgame?: {
+        appid?: unknown;
+      };
     };
   };
 }
@@ -73,6 +76,13 @@ function extractReleaseYear(
   return parseYear(releaseDate);
 }
 
+function extractFullGameAppId(
+  appData: SteamAppDetailsResponse[string],
+): string | undefined {
+  const appId = appData.data?.fullgame?.appid;
+  return typeof appId === "string" && appId.trim() ? appId.trim() : undefined;
+}
+
 export class SteamDetailsApiClient {
   private rateLimiter: RateLimiter;
 
@@ -82,7 +92,7 @@ export class SteamDetailsApiClient {
 
   async getGameDetailsByAppId(
     appId: string,
-  ): Promise<{ name: string; releaseYear?: number }> {
+  ): Promise<{ name: string; releaseYear?: number; fullGameAppId?: string }> {
     const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
     const data = await fetchSteamJson<SteamAppDetailsResponse>(
@@ -96,7 +106,12 @@ export class SteamDetailsApiClient {
 
     const gameName = extractGameName(appData);
     const releaseYear = extractReleaseYear(appData);
+    const fullGameAppId = extractFullGameAppId(appData);
 
-    return { name: gameName, releaseYear };
+    return {
+      name: gameName,
+      releaseYear,
+      ...(fullGameAppId ? { fullGameAppId } : {}),
+    };
   }
 }

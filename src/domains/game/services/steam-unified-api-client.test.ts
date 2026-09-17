@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
 interface LoadOptions {
-  cacheResult?: { name: string; score: number; releaseYear?: number };
-  gameDetails?: { name: string; releaseYear?: number };
+  cacheResult?: {
+    name: string;
+    score: number;
+    releaseYear?: number;
+    fullGameAppId?: string;
+  };
+  gameDetails?: { name: string; releaseYear?: number; fullGameAppId?: string };
   scoreResult?: { score: number } | null;
 }
 
@@ -46,11 +51,13 @@ async function loadSteamUnifiedClient(options: LoadOptions = {}) {
         name: string;
         score: number;
         releaseYear?: number;
+        fullGameAppId?: string;
       }>,
       validator: (value: {
         name: string;
         score: number;
         releaseYear?: number;
+        fullGameAppId?: string;
       }) => boolean,
     ) => {
       if (options.cacheResult) {
@@ -115,7 +122,7 @@ describe("createSteamUnifiedApiClient", () => {
 
     expect(createCache).toHaveBeenCalledWith(1296000000, logger);
     expect(getOrFetchValidated).toHaveBeenCalledWith(
-      "steam:47780",
+      "steam:v2:47780",
       expect.any(Function),
       expect.any(Function),
     );
@@ -143,6 +150,25 @@ describe("createSteamUnifiedApiClient", () => {
 
     expect(getGameDetailsByAppId).not.toHaveBeenCalled();
     expect(getScoreByAppId).not.toHaveBeenCalled();
+  });
+
+  it("carries the Steam base-game app id into unified data", async () => {
+    const { createSteamUnifiedApiClient } = await loadSteamUnifiedClient({
+      gameDetails: {
+        name: "The Witcher 3: Wild Hunt - Blood and Wine",
+        releaseYear: 2016,
+        fullGameAppId: "292030",
+      },
+    });
+
+    const client = createSteamUnifiedApiClient({ child: vi.fn() } as never);
+
+    await expect(client.getGameData("378648")).resolves.toEqual({
+      name: "The Witcher 3: Wild Hunt - Blood and Wine",
+      score: 91.4,
+      releaseYear: 2016,
+      fullGameAppId: "292030",
+    });
   });
 
   it("throws when score is unavailable", async () => {

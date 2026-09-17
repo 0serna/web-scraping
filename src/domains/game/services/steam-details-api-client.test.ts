@@ -94,6 +94,56 @@ describe("SteamDetailsApiClient", () => {
     );
   });
 
+  it("returns the base-game app id when Steam provides one", async () => {
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
+
+    fetchWithTimeout.mockResolvedValue(
+      jsonResponse({
+        378648: {
+          success: true,
+          data: {
+            name: "The Witcher 3: Wild Hunt - Blood and Wine",
+            fullgame: { appid: "292030" },
+          },
+        },
+      }),
+    );
+
+    const client = new SteamDetailsApiClient();
+
+    await expect(client.getGameDetailsByAppId("378648")).resolves.toEqual({
+      name: "The Witcher 3: Wild Hunt - Blood and Wine",
+      releaseYear: undefined,
+      fullGameAppId: "292030",
+    });
+  });
+
+  it.each([
+    ["fullgame is absent", {}],
+    ["appid is empty", { fullgame: { appid: "  " } }],
+    ["appid is malformed", { fullgame: { appid: 292030 } }],
+  ])("ignores %s metadata", async (_case, extraData) => {
+    const { SteamDetailsApiClient, fetchWithTimeout } =
+      await loadSteamDetailsApiClient();
+
+    fetchWithTimeout.mockResolvedValue(
+      jsonResponse({
+        47780: {
+          success: true,
+          data: { name: "Some Game", ...extraData },
+        },
+      }),
+    );
+
+    const client = new SteamDetailsApiClient();
+
+    await expect(client.getGameDetailsByAppId("47780")).resolves.toEqual({
+      name: "Some Game",
+      releaseYear: undefined,
+    });
+  });
+
   it("throws SteamFetchError when response is not ok", async () => {
     const loaded = await loadSteamDetailsApiClient();
 

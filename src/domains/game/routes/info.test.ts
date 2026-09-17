@@ -88,6 +88,45 @@ describe("infoRoutes", () => {
     expect(gameInfoService.getGameInfoByAppId).toHaveBeenCalledWith("47780");
   });
 
+  it("returns ProtonDB data for a DLC-shaped game response", async () => {
+    const gameInfoService = {
+      getGameInfoByAppId: vi.fn().mockResolvedValue({
+        name: "The Witcher 3: Wild Hunt - Blood and Wine",
+        score: 74.2,
+        releaseYear: 2016,
+        source: "steam",
+        protonDb: {
+          tier: "platinum",
+          score: 0.87,
+          confidence: "strong",
+          reports: 1746,
+        },
+      }),
+    };
+
+    const app = trackApp(createServer(gameInfoService));
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/info?url=https://store.steampowered.com/app/378648/The_Witcher_3__Wild_Hunt___Blood_and_Wine/",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      name: "The Witcher 3: Wild Hunt - Blood and Wine",
+      score: 74.2,
+      releaseYear: 2016,
+      source: "steam",
+      protonDb: {
+        tier: "platinum",
+        score: 0.87,
+        confidence: "strong",
+        reports: 1746,
+      },
+    });
+    expect(gameInfoService.getGameInfoByAppId).toHaveBeenCalledWith("378648");
+  });
+
   it("returns 502 when service throws", async () => {
     const gameInfoService = {
       getGameInfoByAppId: vi.fn().mockRejectedValue(new Error("steam error")),
