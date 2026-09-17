@@ -4,12 +4,20 @@ async function loadGameInfoService() {
   vi.resetModules();
 
   const getGameData = vi.fn();
+  const getSummaryByAppId = vi.fn().mockResolvedValue(null);
   const createSteamUnifiedApiClient = vi.fn().mockReturnValue({
     getGameData,
   });
 
+  class ProtonDbApiClientMock {
+    getSummaryByAppId = getSummaryByAppId;
+  }
+
   vi.doMock("./steam-unified-api-client.js", () => ({
     createSteamUnifiedApiClient,
+  }));
+  vi.doMock("./protondb-api-client.js", () => ({
+    ProtonDbApiClient: ProtonDbApiClientMock,
   }));
 
   const module = await import("./game-info-service.js");
@@ -17,6 +25,7 @@ async function loadGameInfoService() {
   return {
     ...module,
     getGameData,
+    getSummaryByAppId,
     createSteamUnifiedApiClient,
   };
 }
@@ -40,6 +49,40 @@ describe("GameInfoService", () => {
       releaseYear: 2011,
     });
     expect(getGameData).toHaveBeenCalledWith("47780");
+  });
+
+  it("includes an available ProtonDB summary", async () => {
+    const { GameInfoService, getGameData, getSummaryByAppId } =
+      await loadGameInfoService();
+    getGameData.mockResolvedValue({ name: "Dead Space 2", score: 91.4 });
+    getSummaryByAppId.mockResolvedValue({
+      tier: "platinum",
+      score: 0.8,
+      confidence: "strong",
+      reports: 85,
+    });
+
+    const service = new GameInfoService({ warn: vi.fn() } as never);
+
+    await expect(service.getGameInfoByAppId("47780")).resolves.toMatchObject({
+      protonDb: {
+        tier: "platinum",
+        score: 0.8,
+        confidence: "strong",
+        reports: 85,
+      },
+    });
+    expect(getSummaryByAppId).toHaveBeenCalledWith("47780");
+  });
+
+  it("preserves Steam failures", async () => {
+    const { GameInfoService, getGameData } = await loadGameInfoService();
+    getGameData.mockRejectedValue(new Error("steam unavailable"));
+    const service = new GameInfoService({ warn: vi.fn() } as never);
+
+    await expect(service.getGameInfoByAppId("47780")).rejects.toThrow(
+      "steam unavailable",
+    );
   });
 
   it("factory creates service instance", async () => {
