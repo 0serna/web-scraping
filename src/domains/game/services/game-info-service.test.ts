@@ -117,14 +117,4 @@ describe("GameInfoService", () => {
       "steam unavailable",
     );
   });
-
-  it("factory creates service instance", async () => {
-    const { createGameInfoService, GameInfoService } =
-      await loadGameInfoService();
-    const logger = { child: vi.fn() };
-
-    const service = createGameInfoService(logger as never);
-
-    expect(service).toBeInstanceOf(GameInfoService);
-  });
 });

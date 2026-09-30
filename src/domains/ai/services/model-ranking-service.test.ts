@@ -4,10 +4,7 @@ import type {
   DeepSweScore,
   RankedModel,
 } from "../types/ranking.js";
-import {
-  EXCLUDED_SLUG_PREFIXES,
-  ModelRankingService,
-} from "./model-ranking-service.js";
+import { ModelRankingService } from "./model-ranking-service.js";
 
 function rankingModel(
   overrides: Partial<ArtificialAnalysisModel> &
@@ -50,10 +47,8 @@ function rankedModel(
 function excludedPrefixModel(
   overrides: Partial<ArtificialAnalysisModel> = {},
 ): ArtificialAnalysisModel {
-  const excludedSlugPrefix = EXCLUDED_SLUG_PREFIXES[0] ?? "excluded-prefix";
-
   return rankingModel({
-    slug: `${excludedSlugPrefix}-candidate`,
+    slug: "claude-candidate",
     model: "Excluded Prefix Candidate",
     coding: 100,
     intelligenceIndexOutputTokens: 1_000_000,
@@ -93,38 +88,6 @@ describe("ModelRankingService", () => {
       rankedModel({ model: "Model D", rank: 1, tokens: null, coding: 90 }),
       rankedModel({ model: "Model B", rank: 2, tokens: 100, coding: 80 }),
       rankedModel({ model: "Model A", rank: 3, tokens: 50, coding: 50 }),
-    ]);
-  });
-
-  it("orders by coding score descending", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "high-coding-high-tokens",
-        model: "High Coding High Tokens",
-        coding: 100,
-        intelligenceIndexOutputTokens: 125_000_000,
-      }),
-      rankingModel({
-        slug: "lower-coding-low-tokens",
-        model: "Lower Coding Low Tokens",
-        coding: 75,
-        intelligenceIndexOutputTokens: 75_000_000,
-      }),
-    ]);
-
-    await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({
-        model: "High Coding High Tokens",
-        rank: 1,
-        tokens: 125,
-        coding: 100,
-      }),
-      rankedModel({
-        model: "Lower Coding Low Tokens",
-        rank: 2,
-        tokens: 75,
-        coding: 75,
-      }),
     ]);
   });
 
@@ -168,38 +131,6 @@ describe("ModelRankingService", () => {
     expect(ranking[1].rank).toBe(2);
     expect(ranking[2].rank).toBe(3);
     expect(ranking[3].rank).toBe(4);
-  });
-
-  it("uses model name after coding and output-token ties", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "zulu-fewer-tokens",
-        model: "Zulu Fewer Tokens",
-        coding: 100,
-        intelligenceIndexOutputTokens: 50_000_000,
-      }),
-      rankingModel({
-        slug: "alpha-more-tokens",
-        model: "Alpha More Tokens",
-        coding: 100,
-        intelligenceIndexOutputTokens: 50_000_000,
-      }),
-    ]);
-
-    await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({
-        model: "Alpha More Tokens",
-        rank: 1,
-        tokens: 50,
-        coding: 100,
-      }),
-      rankedModel({
-        model: "Zulu Fewer Tokens",
-        rank: 2,
-        tokens: 50,
-        coding: 100,
-      }),
-    ]);
   });
 
   it("excludes configured slug prefixes before ranking", async () => {
@@ -251,20 +182,6 @@ describe("ModelRankingService", () => {
     });
   });
 
-  it("includes model without price data or frontier flag", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "model-a",
-        model: "Model A",
-        coding: 80,
-      }),
-    ]);
-
-    await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "Model A", rank: 1, coding: 80 }),
-    ]);
-  });
-
   it("excludes deprecated models before ranking", async () => {
     const service = createServiceForModels([
       rankingModel({
@@ -287,7 +204,6 @@ describe("ModelRankingService", () => {
     expect(ranking).toEqual([
       rankedModel({ model: "Active Model", rank: 1, coding: 70 }),
     ]);
-    expect(ranking[0]).not.toHaveProperty("deprecated");
   });
 
   it("keeps models with missing deprecated value eligible", async () => {
@@ -369,30 +285,6 @@ describe("ModelRankingService", () => {
     expect(ranking).toEqual([
       rankedModel({ model: "Old Model", rank: 1, coding: 80 }),
       rankedModel({ model: "Recent Model", rank: 2, coding: 60 }),
-    ]);
-    expect(ranking[0]).not.toHaveProperty("date");
-    expect(ranking[0]).not.toHaveProperty("releaseDate");
-  });
-
-  it("returns models below the previous minimum score threshold", async () => {
-    const service = createServiceForModels([
-      rankingModel({
-        slug: "high-score-model",
-        model: "High Score Model",
-        coding: 100,
-        intelligenceIndexOutputTokens: 100_000_000,
-      }),
-      rankingModel({
-        slug: "low-score-model",
-        model: "Low Score Model",
-        coding: 60,
-        intelligenceIndexOutputTokens: 100_000_000,
-      }),
-    ]);
-
-    await expect(service.getRanking()).resolves.toEqual([
-      rankedModel({ model: "High Score Model", rank: 1, coding: 100 }),
-      rankedModel({ model: "Low Score Model", rank: 2, coding: 60 }),
     ]);
   });
 

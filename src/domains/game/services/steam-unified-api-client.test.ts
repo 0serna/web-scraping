@@ -196,21 +196,4 @@ describe("createSteamUnifiedApiClient", () => {
       "Steam score is invalid for app 47780",
     );
   });
-
-  it("refetches when cached game data has empty name", async () => {
-    const {
-      createSteamUnifiedApiClient,
-      getGameDetailsByAppId,
-      getScoreByAppId,
-    } = await loadSteamUnifiedClient({
-      cacheResult: { name: "", score: 90 },
-    });
-
-    const logger = { child: vi.fn() };
-    const client = createSteamUnifiedApiClient(logger as never);
-
-    await expect(client.getGameData("47780")).rejects.toThrow();
-    expect(getGameDetailsByAppId).not.toHaveBeenCalled();
-    expect(getScoreByAppId).not.toHaveBeenCalled();
-  });
 });

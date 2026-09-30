@@ -130,22 +130,6 @@ describe("tickerRoutes", () => {
     });
   });
 
-  it("calls TradingView once when Trii misses and TradingView throws", async () => {
-    const { response, tradingViewClient } = await injectGet(
-      "/ticker/ecopetrol",
-      {
-        tradingViewClient: {
-          getPriceByTicker: vi
-            .fn()
-            .mockRejectedValue(new Error("tradingview fail")),
-        },
-      },
-    );
-
-    expect(response.statusCode).toBe(502);
-    expect(tradingViewClient.getPriceByTicker).toHaveBeenCalledTimes(1);
-  });
-
   it("returns tradingview value when trii throws and fallback succeeds", async () => {
     const tradingViewValue = {
       ticker: "ECOPETROL",

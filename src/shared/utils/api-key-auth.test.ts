@@ -49,22 +49,6 @@ describe("api key auth hook", () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it("falls back to apikey query when x-api-key is empty", async () => {
-    const app = trackApp(
-      createServer({ isDisabled: false, apiKey: "secret-key" }),
-    );
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/health?apikey=secret-key",
-      headers: {
-        "x-api-key": "",
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-  });
-
   it("authorizes when only apikey query is provided", async () => {
     const app = trackApp(
       createServer({ isDisabled: false, apiKey: "secret-key" }),

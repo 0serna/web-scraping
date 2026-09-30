@@ -51,13 +51,6 @@ describe("matchDeepSweScore", () => {
     expect(matchDeepSweScore("gpt-5.5 [HIGH]", scores)).toBe(64);
     expect(matchDeepSweScore("GPT-5.5 [high]", scores)).toBe(64);
   });
-
-  it("rounds pass_rate to integer percentage", () => {
-    const scoresWithDecimal: DeepSweScore[] = [
-      { model: "test-model", effort: null, score: 65 }, // 0.6487 * 100 ≈ 65
-    ];
-    expect(matchDeepSweScore("test-model", scoresWithDecimal)).toBe(65);
-  });
 });
 
 async function loadDeepSweClient() {

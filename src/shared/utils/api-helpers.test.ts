@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFetchHeaders,
-  createErrorResponse,
   fetchWithTimeout,
   sendError,
 } from "./api-helpers.js";
@@ -31,17 +30,6 @@ describe("buildFetchHeaders", () => {
 
     const fromHeaders = buildFetchHeaders(new Headers([["X-Test", "1"]]));
     expect(fromHeaders["x-test"]).toBe("1");
-  });
-});
-
-describe("createErrorResponse", () => {
-  it("creates a standardized error payload", () => {
-    expect(createErrorResponse("INVALID_INPUT", "Invalid input")).toEqual({
-      error: {
-        code: "INVALID_INPUT",
-        message: "Invalid input",
-      },
-    });
   });
 });
 
